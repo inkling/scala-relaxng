@@ -17,13 +17,19 @@ Dependencies are fetched automatically via
  * SBT: The library is built using SBT >= 0.10.0
    - To buld, run "sbt compile" in the root directory.
    - To test, run "sbt test" in the root directory
- * ScalaCheck: The library provides scalacheck Arbitrary instances, hence requires it even for non-testing use
+ * ScalaCheck: The library provides scalacheck Arbitrary instances, hence requires it even for non-testing use.
  * ScalaTest: For running the test suites, ScalaTest is required
+   - ScalaTest is distributed under the Apache 2.0 License
 
 Contributors
 ------------
 
  * Kenn Knowles (@kennknowles)
+
+Licenses of Dependencies
+------------------------   
+ * ScalaTest is distributed under the Apache 2.0 License 
+ * ScalaCheck is distributed under a modified BSD License: http://scalacheck.googlecode.com/svn/artifacts/1.9/doc/LICENSE
 
 Copyright and License
 ---------------------
