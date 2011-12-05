@@ -21,16 +21,8 @@
 
 package com.inkling.relaxng.test
 
-import com.inkling.relaxng._
 import com.inkling.relaxng.AST._
 import com.inkling.relaxng.ArbitraryInstances._
-import com.inkling.relaxng.Parsers._
-import com.inkling.relaxng.Pretty._
-
-import scala.util.parsing.combinator._
-import scala.util.parsing.input._
-import scala.text.Document
-import java.io.StringWriter
 
 import org.scalatest._
 import org.scalatest.prop._
@@ -39,33 +31,26 @@ import org.scalacheck.Gen._
 import org.scalacheck.Prop._
 import org.scalacheck.Arbitrary._
 
-class ParsersSpec extends Spec with Checkers {
-  def string(d: Document) : String = {
-    val w = new StringWriter
-    d.format(200, w)
-    w.toString
-  }
-
+class ArbitraryInstancesSpec extends Spec with Checkers {
   def checkit(description: String)(prop: Prop) {
     it(description) {
       check(prop)
     }
   }
 
-  def parsePretty[T](gen: Gen[T], parser: Parser[T])(implicit p: Pretty[T]) : Prop =
-    forAll(gen) { 
-      v: T => 
-        val s = string(pretty(v))
-        s |: (v == parseBlithely(parser, s))
-    }
+  def nonFailing[T](g: Gen[T]) : Prop = noneFailing(Seq(g))
 
-  describe("A RelaxNg (compact) parser") {
-    describe("identity == (parse . pretty)") {
-      checkit("unary operators")  { parsePretty(arbitrary[UnOp], postfixUnOp | prefixUnOp) }
-      checkit("binary operators") { parsePretty(arbitrary[BinOp], binOp) }
-      checkit("non-colon names") { parsePretty(arbitrary[NCName], ncName) }
-      checkit("colon names") { parsePretty(arbitrary[CName], cName) }
-      //checkit("patterns") { parsePretty(arbitrary[Pattern], pattern) }
+  describe("The RelaxNg Compact Syntax Arbitrary instances") {
+    describe("Should all be non-failing (checking for excess recursion)") {
+      checkit("unary operators")  { nonFailing(arbitrary[UnOp]) }
+      checkit("binary operators") { nonFailing(arbitrary[BinOp]) }
+      checkit("non-colon names")  { nonFailing(arbitrary[NCName]) }
+      checkit("colon names")      { nonFailing(arbitrary[CName]) }
+      checkit("name classes")     { nonFailing(arbitrary[NameClass]) }
+      checkit("patterns")         { nonFailing(arbitrary[Pattern]) }
+      checkit("declarations")     { nonFailing(arbitrary[Declaration]) }
+      checkit("grammar content")  { nonFailing(arbitrary[GrammarContent]) }
+      checkit("schema")           { nonFailing(arbitrary[Schema]) }
     }
   }
 }

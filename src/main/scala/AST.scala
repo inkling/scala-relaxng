@@ -23,28 +23,36 @@ package com.inkling.relaxng
 
 import java.net.URI
 
-import org.scalacheck._
-import org.scalacheck.Arbitrary._
-
 /**  
  * See http://relaxng.org/compact-20021121.html for EBNF
  */
 object AST {
+
+  /**
+   * A RelaxNg Compact Syntax Schema
+   */
   case class Schema(decl: Seq[Declaration], content: Either[Pattern, Seq[GrammarContent]]) // topLevel
 
-  case class Inherit() // A constant
-
+  /**
+   * A schema may start with some namespaces or datatypes declarations before any grammar content
+   */
   abstract class Declaration
-  case class Namespace(name: Identifier, uriOrInherit: Either[URI, Inherit]) extends Declaration // name = uri
-  case class DefaultNamespace(name: Option[Identifier], uriOrInherit: Either[URI, Inherit]) extends Declaration
+  case class Namespace(name: Identifier, uriOrInherit: Either[URI, Inherit]) extends Declaration // namespace <name> = (<literal> | inherit)
+  case class DefaultNamespace(name: Option[Identifier], uriOrInherit: Either[URI, Inherit]) extends Declaration 
   case class Datatypes(name: Identifier, value: String) extends Declaration
+  case class Inherit() // Namespace constant
   
+  /**
+   * An item of grammar content is a definition (including "start"), a div, or an include
+   */
   abstract class GrammarContent
-  case class Start(op: AssignOp, pattern: Pattern) extends GrammarContent
   case class Define(name: Identifier, op: AssignOp, pattern: Pattern) extends GrammarContent
   case class Div(grammar: Seq[GrammarContent]) extends GrammarContent
   case class Include(uri: URI, inherit: Option[Identifier], include: Seq[GrammarContent]) extends GrammarContent // Includes cannot be nested, but it just complicates the AST
 
+  /**
+   * A pattern matches XML content directly, either attributes or xml
+   */
   abstract class Pattern
   case class Constant(raw: String) extends Pattern // text | empty | notAllowed
   case class Element(name: NameClass, pattern: Pattern) extends Pattern
@@ -58,72 +66,30 @@ object AST {
   case class ExternalRef(uri: URI, inherit: Boolean) extends Pattern
   case class Grammar(grammar: Seq[GrammarContent]) extends Pattern
 
+  /**
+   * A NameClass specifies a class of element names via using names, wildcards, union and difference operators
+   */
   abstract class NameClass
-  abstract class Name extends NameClass
   case class AnyNameClass(ns: Option[NCName]) extends NameClass // [<ns>:]*
   case class ExceptNameClass(any: AnyNameClass, except: NameClass) extends NameClass // <any> - <except>
   case class OrNameClass(left: NameClass, right: NameClass) extends NameClass // <nameClass> | <nameClass>
   
+  /**
+   * A Name is an identifier or colon-separated name
+   */
+  abstract class Name extends NameClass
   case class Identifier(raw: String) extends Name
   case class CName(prefix: NCName, suffix: NCName) extends Name
-
   case class NCName(raw: String) // See http://www.w3.org/TR/REC-xml-names/ for actual allowed strings
 
+  /**
+   * DataTypeName is either a colon-separated name or the built-in types "string" and "token"
+   */
   abstract class DataTypeName
-  case class PrimitiveDataType(raw: String) extends DataTypeName
+  case class PrimitiveDataType(raw: String) extends DataTypeName // "string" | "token"
   case class DataTypeCName(name: CName) extends DataTypeName
 
-  case class AssignOp(raw: String)
-  case class BinOp(raw: String) // & | ,
-  case class UnOp(raw: String) // * + list mixed
-
-  implicit def arbUnOp : Arbitrary[UnOp] = Arbitrary(for(raw <- Gen.oneOf(Seq("*", "+", "list", "mixed"))) yield UnOp(raw))
-  implicit def arbBinOp : Arbitrary[BinOp] = Arbitrary(for(raw <- Gen.oneOf(Seq("&", "|", ","))) yield BinOp(raw))
-  implicit def arbAssignOp : Arbitrary[AssignOp] = Arbitrary(for(raw <- Gen.oneOf("=", "|=", "&=")) yield AssignOp(raw))
-
-  implicit def arbDataTypeName : Arbitrary[DataTypeName] = Arbitrary(Gen.oneOf(Gen.resultOf(PrimitiveDataType),
-                                                                               Gen.resultOf(DataTypeCName)))
-
-  implicit def arbAnyNameClass : Arbitrary[AnyNameClass] = Arbitrary(Gen.resultOf(AnyNameClass))
-
-  implicit def arbNameClass : Arbitrary[NameClass] = Arbitrary(Gen.oneOf(arbitrary[Name],
-                                                                         arbitrary[AnyNameClass],
-                                                                         Gen.resultOf(ExceptNameClass),
-                                                                         Gen.resultOf(OrNameClass)))
-
-  implicit def arbIdentifier : Arbitrary[Identifier] = Arbitrary(Gen.identifier flatMap (Identifier(_)))
-  implicit def arbNCName : Arbitrary[NCName] = Arbitrary(Gen.identifier flatMap (NCName(_)))
-  implicit def arbCName : Arbitrary[CName] = Arbitrary(Gen.resultOf(CName))
-  implicit def arbName : Arbitrary[Name] = Arbitrary(Gen.oneOf(arbitrary[Identifier], arbitrary[CName]))
-
-  def genDataTypeValue : Gen[String] = Gen.alphaStr
-
-  implicit def arbPattern : Arbitrary[Pattern] = Arbitrary(Gen.oneOf(Gen.oneOf("text", "empty", "notAllowed") flatMap(Constant.apply),
-                                                                     Gen.resultOf(Element),
-                                                                     Gen.resultOf(Attribute),
-                                                                     Gen.resultOf(ApplyBinOp),
-                                                                     Gen.resultOf(ApplyUnOp),
-                                                                     Gen.resultOf(PatternIdentifier),
-                                                                     Gen.resultOf(Parent),
-                                                                     for(name <- arbitrary[Option[DataTypeName]]; value <- genDataTypeValue) yield DataType(name, value),
-                                                                     Gen.resultOf(ComplexDataType)))
-                                                                     // TODO: external refs and grammar content
-
-  implicit def arbURI : Arbitrary[URI] = Arbitrary(new URI("http://please/create/arbitrary/URI"))
-
-  implicit def arbInherit : Arbitrary[Inherit] = Arbitrary(Inherit())
-  
-  implicit def arbDeclaration : Arbitrary[Declaration] = Arbitrary(Gen.oneOf(Gen.resultOf(Namespace),
-                                                                             Gen.resultOf(DefaultNamespace),
-                                                                             Gen.resultOf(Datatypes))) //TODO: limit values of Datatypes values
-
-  implicit def arbGrammarContent : Arbitrary[GrammarContent] = Arbitrary(Gen.oneOf(Gen.resultOf(Start),
-                                                                                   Gen.resultOf(Define)))
-                                                                                   // TODO: lists of grammar contentGen.resultOf(Div),
-                                                                                   // TODO: lists of include contentGen.resultOf(Include)))
-  
-  implicit def arbSchema : Arbitrary[Schema] = Arbitrary(for(decls <- Gen.listOf(arbitrary[Declaration]);
-                                                             content <- Gen.oneOf(arbitrary[Pattern] flatMap(Left(_)),
-                                                                                  Gen.listOf(arbitrary[GrammarContent]) flatMap(Right(_))))
-                                                         yield Schema(decls, content))
+  case class AssignOp(raw: String) /** = |= &= */
+  case class BinOp(raw: String) /** & | */
+  case class UnOp(raw: String) /** * + list mixed */
 }

@@ -33,19 +33,19 @@ object Parsers extends RegexParsers with PackratParsers {
   def parse[T](p: Parser[T], s : String) : ParseResult[T] = phrase(p)(new CharArrayReader(s.toArray))
   def parseBlithely[T](p: Parser[T], s : String) : T = parse(p, s).get
 
-  def postfixUnOp : Parser[UnOp] = ("*" | "+") ^^ (UnOp(_))
+  lazy val postfixUnOp : PackratParser[UnOp] = ("*" | "+") ^^ (UnOp(_))
 
-  def prefixUnOp : Parser[UnOp] = ("list" | "mixed") ^^ (UnOp(_))
+  lazy val prefixUnOp : PackratParser[UnOp] = ("list" | "mixed") ^^ (UnOp(_))
 
-  def binOp : Parser[BinOp] = ("&" | "|" | ",") ^^ (BinOp(_))
+  lazy val binOp : PackratParser[BinOp] = ("&" | "|" | ",") ^^ (BinOp(_))
 
-  def colonPrefix : Parser[NCName] = ncName <~ ":"
+  lazy val colonPrefix : PackratParser[NCName] = ncName <~ ":"
   
-  def ncName : Parser[NCName] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ (NCName(_)) // For now, just alphanumeric strings
+  lazy val ncName : PackratParser[NCName] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ (NCName(_)) // For now, just alphanumeric strings
 
-  def cName : Parser[CName] = colonPrefix ~ ncName ^^ { case prefix ~ suffix => CName(prefix, suffix) }
+  lazy val cName : PackratParser[CName] = colonPrefix ~ ncName ^^ { case prefix ~ suffix => CName(prefix, suffix) }
   
-  def identifier : Parser[Identifier] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ Identifier.apply
+  lazy val identifier : PackratParser[Identifier] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ Identifier.apply
 
   lazy val datatypeName : PackratParser[DataTypeName] = (
       ("string" | "token") ^^ PrimitiveDataType.apply
