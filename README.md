@@ -19,7 +19,6 @@ Dependencies are fetched automatically via
    - To test, run "sbt test" in the root directory
  * ScalaCheck: The library provides scalacheck Arbitrary instances, hence requires it even for non-testing use.
  * ScalaTest: For running the test suites, ScalaTest is required
-   - ScalaTest is distributed under the Apache 2.0 License
 
 Contributors
 ------------
