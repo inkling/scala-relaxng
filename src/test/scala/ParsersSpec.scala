@@ -51,13 +51,29 @@ class ParsersSpec extends Spec with Checkers {
     }
   }
 
+  // ScalaCheck has a non-parameterized version of pretty-printing
+/*
+  implicit def prettyResult(parseResult: ParseResult[T])(implicit p: Pretty[T]) : org.scalacheck.Pretty =
+    parseResult match {
+      case Success(result, _) => string(pretty(result))
+      case _ => "<parse error>"
+    }
+*/
+
   def parsePretty[T](gen: Gen[T], parser: Parser[T])(implicit p: Pretty[T]) : Prop =
-    forAll(gen) { v: T => v == parse(parser, string(pretty(v))) }
+    forAll(gen) { 
+      v: T => 
+        val s = string(pretty(v))
+        s |: (v == parseBlithely(parser, s))
+    }
 
   describe("A RelaxNg (compact) parser") {
     describe("identity == (parse . pretty)") {
       checkit("unary operators")  { parsePretty(arbitrary[UnOp], postfixUnOp | prefixUnOp) }
       checkit("binary operators") { parsePretty(arbitrary[BinOp], binOp) }
+      checkit("non-colon names") { parsePretty(arbitrary[NCName], ncName) }
+      checkit("colon names") { parsePretty(arbitrary[CName], cName) }
+      //checkit("patterns") { parsePretty(arbitrary[Pattern], pattern) }
     }
   }
 }

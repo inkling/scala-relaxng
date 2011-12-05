@@ -30,11 +30,57 @@ import scala.util.parsing.input._
 
 object Parsers extends RegexParsers with PackratParsers {
 
-  def parse[T](p: Parser[T], s : String) : T = phrase(p)(new CharArrayReader(s.toArray)).get 
+  def parse[T](p: Parser[T], s : String) : ParseResult[T] = phrase(p)(new CharArrayReader(s.toArray))
+  def parseBlithely[T](p: Parser[T], s : String) : T = parse(p, s).get
 
   def postfixUnOp : Parser[UnOp] = ("*" | "+") ^^ (UnOp(_))
 
   def prefixUnOp : Parser[UnOp] = ("list" | "mixed") ^^ (UnOp(_))
 
   def binOp : Parser[BinOp] = ("&" | "|" | ",") ^^ (BinOp(_))
+
+  def colonPrefix : Parser[NCName] = ncName <~ ":"
+  
+  def ncName : Parser[NCName] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ (NCName(_)) // For now, just alphanumeric strings
+
+  def cName : Parser[CName] = colonPrefix ~ ncName ^^ { case prefix ~ suffix => CName(prefix, suffix) }
+  
+  def identifier : Parser[Identifier] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ Identifier.apply
+
+  lazy val datatypeName : PackratParser[DataTypeName] = (
+      ("string" | "token") ^^ PrimitiveDataType.apply
+    | cName ^^ DataTypeCName.apply
+  )
+
+  lazy val literal : PackratParser[String] = regex("\"[^\"]*\"|'[^']*'".r) // TODO: improve this; currently just strings w/out escapes
+
+  lazy val datatypeValue : PackratParser[String] = literal 
+
+  lazy val anyNameClass : PackratParser[AnyNameClass] = (colonPrefix?) <~ "*" ^^ (AnyNameClass.apply _)
+
+  lazy val nameClass : PackratParser[NameClass] = (
+      anyNameClass 
+    | anyNameClass ~ ("-" ~> nameClass) ^^ { case any ~ except => ExceptNameClass(any, except) }
+    | (nameClass <~ "|") ~ nameClass ^^ { case ~(left, right) => OrNameClass(left, right) }
+    | "(" ~> nameClass <~ ")"
+  )
+
+  
+  lazy val datatypeParam : PackratParser[(Identifier, String)] = identifier ~ ("=" ~> literal) ^^ { case ident ~ value => (ident, value) }
+
+  lazy val datatypeParams : PackratParser[Map[Identifier, String]] = rep(datatypeParam) ^^ { _.toMap }
+
+  lazy val pattern : PackratParser[Pattern] = (
+      ("text"  | "empty" | "notAllowed") ^^ (Constant.apply _)
+    | ("element" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Element(nc, p) }
+    | ("attribute" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Attribute(nc, p) }
+    | pattern ~ binOp ~ pattern ^^ { case p1 ~ op ~ p2 => ApplyBinOp(op, p1, p2) }
+    | prefixUnOp ~ pattern ^^ { case op ~ p => ApplyUnOp(op, p) }
+    | pattern ~ postfixUnOp ^^ { case p ~ op => ApplyUnOp(op, p) }
+    | identifier ^^ PatternIdentifier.apply
+    | "parent" ~> identifier ^^ Parent.apply
+    | (datatypeName?) ~ datatypeValue ^^ { case name ~ value => DataType(name, value) }
+    | datatypeName ~ datatypeParams ~ (("-" ~> pattern)?) ^^ { case name ~ params ~ except => ComplexDataType(name, params, except.getOrElse(Constant("empty"))) }
+    // TODO: external URI refs and grammar content
+  )
 }
