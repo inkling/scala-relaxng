@@ -72,12 +72,13 @@ object Parsers extends RegexParsers with PackratParsers {
   lazy val literalPattern : PackratParser[LiteralPattern] = (datatypeName?) ~ literal ^^ { case name ~ value => LiteralPattern(name, value) }
     
   lazy val datatypePattern : PackratParser[Datatype] = datatypeName ~ datatypeParams ^^ { case name ~ params => Datatype(name, params) }
+  lazy val parent : PackratParser[Parent] = "parent" ~> identifier ^^ Parent.apply
 
   lazy val pattern : PackratParser[Pattern] = (
       ("text"  | "empty" | "notAllowed") ^^ PrimitivePattern.apply
     | ("element" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Element(nc, p) }
     | ("attribute" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Attribute(nc, p) }
-    | "parent" ~> identifier ^^ Parent.apply
+    | parent
     | pattern ~ binOp ~ pattern ^^ { case p1 ~ op ~ p2 => ApplyBinOp(op, p1, p2) }
     | prefixUnOp ~ pattern ^^ { case op ~ p => ApplyUnOp(op, p) }
     | pattern ~ postfixUnOp ^^ { case p ~ op => ApplyUnOp(op, p) }

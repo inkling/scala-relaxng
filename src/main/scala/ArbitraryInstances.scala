@@ -58,16 +58,15 @@ object ArbitraryInstances {
   implicit def arbLiteral : Arbitrary[Literal] = Arbitrary(alphaStr.flatMap(Literal.apply))
 
   implicit def arbLiteralPattern : Arbitrary[LiteralPattern] = Arbitrary(resultOf(LiteralPattern))
-
   implicit def arbDatatype : Arbitrary[Datatype] = Arbitrary(resultOf(Datatype))
-
+  implicit def arbParent : Arbitrary[Parent] = Arbitrary(resultOf(Parent))
   implicit def arbPattern : Arbitrary[Pattern] = Arbitrary(oneOf(oneOf("text", "empty", "notAllowed") flatMap(PrimitivePattern.apply),
                                                                  wrap(resultOf(Element)),
                                                                  wrap(resultOf(Attribute)),
                                                                  wrap(resultOf(ApplyBinOp)),
                                                                  wrap(resultOf(ApplyUnOp)),
                                                                  arbitrary[LiteralPattern],
-                                                                 wrap(resultOf(Parent)),
+                                                                 arbitrary[Parent],
                                                                  arbitrary[Datatype]))
                             // TODO: external refs and grammar content
 

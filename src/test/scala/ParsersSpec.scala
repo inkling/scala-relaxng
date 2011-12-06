@@ -78,6 +78,7 @@ class ParsersSpec extends Spec with Checkers {
       checkit("literal patterns") { parsePretty(literalPattern) }
       checkit("datatype parameters") { parsePretty(datatypeParams) }
       checkit("datatype patterns") { parsePretty(datatypePattern) }
+      checkit("parent patterns") { parsePretty(parent) }
       // Not quite yet... checkit("patterns") { parsePretty(pattern) }
     }
   }

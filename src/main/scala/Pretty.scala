@@ -91,6 +91,7 @@ object Pretty {
     }
       
     implicit def prettyDatatype : Pretty[Datatype] = Pretty { case Datatype(name, params) => pretty(name) :/: pretty(params) }
+    implicit def prettyparent : Pretty[Parent] = Pretty { case Parent(ident) => text("parent") :/: pretty(ident) }
   
     implicit def prettyPattern : Pretty[Pattern] = Pretty { 
       case PrimitivePattern(raw) => text(raw)
@@ -100,7 +101,7 @@ object Pretty {
       case ApplyUnOp(op, p) if prefix(op) => parens(pretty(op) :/: pretty(p))
       case ApplyUnOp(op, p) if postfix(op) => parens(pretty(p) :/: pretty(op))
       case PatternIdentifier(name) => pretty(name)
-      case Parent(name) => text("parent") :/: pretty(name)
+      case p:Parent => pretty(p)
       case l:LiteralPattern => pretty(l)
       case d:Datatype => pretty(d)
       // TODO: external refs and grammar content
