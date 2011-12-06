@@ -34,38 +34,51 @@ import java.io.StringWriter
 
 import org.scalatest._
 import org.scalatest.prop._
-import org.scalacheck.{Gen, Prop}
+import org.scalacheck.{Gen, Prop, Arbitrary}
 import org.scalacheck.Gen._
 import org.scalacheck.Prop._
 import org.scalacheck.Arbitrary._
 
 class ParsersSpec extends Spec with Checkers {
-  def string(d: Document) : String = {
+  def show[T](v: T)(implicit p: Pretty[T]) : String = {
     val w = new StringWriter
-    d.format(200, w)
+    pretty(v).format(200, w)
     w.toString
   }
 
-  def checkit(description: String)(prop: Prop) {
-    it(description) {
-      check(prop)
-    }
-  }
+  implicit def scalacheckPretty[T](v: T)(implicit p: Pretty[T]) : org.scalacheck.Pretty = org.scalacheck.Pretty { params => show(v) }
 
-  def parsePretty[T](gen: Gen[T], parser: Parser[T])(implicit p: Pretty[T]) : Prop =
+  /** Little wrapper because I never "it" without a "check" */
+  def checkit(description: String)(prop: Prop) { it(description) { check(prop) } }
+
+  /** A simple wrapper so that exceptions do not prevent Prop labels from attaching */
+  def noThrow[P](f: => P)(implicit p: P => Prop) : Prop = try { p(f) } catch { case _ => false }
+
+  //def equal[T](expected: T, got: T)(implicit p : Pretty[T]) : Prop = expecte
+
+  def parsePretty[T](gen: Gen[T])(parser: Parser[T])(implicit p: Pretty[T]) : Prop = 
     forAll(gen) { 
       v: T => 
-        val s = string(pretty(v))
-        s |: (v == parseBlithely(parser, s))
+        val result = parse(parser, show(v)).get
+        "input = " + v |:
+        "output = " + result |: 
+        (v == result)
     }
+
+  def parsePretty[T](parser: Parser[T])(implicit arb: Arbitrary[T], p: Pretty[T]) : Prop = parsePretty(arbitrary[T])(parser)
 
   describe("A RelaxNg (compact) parser") {
     describe("identity == (parse . pretty)") {
-      checkit("unary operators")  { parsePretty(arbitrary[UnOp], postfixUnOp | prefixUnOp) }
-      checkit("binary operators") { parsePretty(arbitrary[BinOp], binOp) }
-      checkit("non-colon names") { parsePretty(arbitrary[NCName], ncName) }
-      checkit("colon names") { parsePretty(arbitrary[CName], cName) }
-      //checkit("patterns") { parsePretty(arbitrary[Pattern], pattern) }
+      checkit("unary operators")  { parsePretty(postfixUnOp | prefixUnOp) }
+      checkit("binary operators") { parsePretty(binOp) }
+      checkit("non-colon names") { parsePretty(ncName) }
+      checkit("colon names") { parsePretty(cName) }
+      checkit("literals") { parsePretty(literal) }
+      checkit("datatype names") { parsePretty(datatypeName) }
+      checkit("literal patterns") { parsePretty(literalPattern) }
+      checkit("datatype parameters") { parsePretty(datatypeParams) }
+      checkit("datatype patterns") { parsePretty(datatypePattern) }
+      // Not quite yet... checkit("patterns") { parsePretty(pattern) }
     }
   }
 }

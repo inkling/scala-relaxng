@@ -26,35 +26,33 @@ import AST._
 import scala.util.parsing.combinator._
 import scala.util.parsing.input._
 
-// Via http://www.oasis-open.org/committees/relax-ng/compact-20020607.html
-
+/**
+ * Parser for RelaxNg Compact Syntax.
+ */
 object Parsers extends RegexParsers with PackratParsers {
 
-  def parse[T](p: Parser[T], s : String) : ParseResult[T] = phrase(p)(new CharArrayReader(s.toArray))
-  def parseBlithely[T](p: Parser[T], s : String) : T = parse(p, s).get
+  def parse[T](p: Parser[T], s : String) : ParseResult[T] = phrase(p)(new PackratReader(new CharArrayReader(s.toArray)))
 
-  lazy val postfixUnOp : PackratParser[UnOp] = ("*" | "+") ^^ (UnOp(_))
+  lazy val postfixUnOp : PackratParser[UnOp] = ("*" | "+") ^^ UnOp.apply
 
-  lazy val prefixUnOp : PackratParser[UnOp] = ("list" | "mixed") ^^ (UnOp(_))
+  lazy val prefixUnOp : PackratParser[UnOp] = ("list" | "mixed") ^^ UnOp.apply
 
-  lazy val binOp : PackratParser[BinOp] = ("&" | "|" | ",") ^^ (BinOp(_))
+  lazy val binOp : PackratParser[BinOp] = ("&" | "|" | ",") ^^ BinOp.apply
 
   lazy val colonPrefix : PackratParser[NCName] = ncName <~ ":"
   
-  lazy val ncName : PackratParser[NCName] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ (NCName(_)) // For now, just alphanumeric strings
+  lazy val ncName : PackratParser[NCName] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ NCName.apply // For now, just alphanumeric strings
 
   lazy val cName : PackratParser[CName] = colonPrefix ~ ncName ^^ { case prefix ~ suffix => CName(prefix, suffix) }
   
   lazy val identifier : PackratParser[Identifier] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ Identifier.apply
 
-  lazy val datatypeName : PackratParser[DataTypeName] = (
-      ("string" | "token") ^^ PrimitiveDataType.apply
-    | cName ^^ DataTypeCName.apply
+  lazy val datatypeName : PackratParser[DatatypeName] = (
+      ("string" | "token") ^^ PrimitiveDatatype.apply
+    | cName ^^ DatatypeCName.apply
   )
 
-  lazy val literal : PackratParser[String] = regex("\"[^\"]*\"|'[^']*'".r) // TODO: improve this; currently just strings w/out escapes
-
-  lazy val datatypeValue : PackratParser[String] = literal 
+  lazy val literal : PackratParser[Literal] = "\"" ~> regex("[^\"]*".r) <~ "\"" ^^ Literal.apply // TODO: improve this; currently just strings w/out escapes
 
   lazy val anyNameClass : PackratParser[AnyNameClass] = (colonPrefix?) <~ "*" ^^ (AnyNameClass.apply _)
 
@@ -66,21 +64,26 @@ object Parsers extends RegexParsers with PackratParsers {
   )
 
   
-  lazy val datatypeParam : PackratParser[(Identifier, String)] = identifier ~ ("=" ~> literal) ^^ { case ident ~ value => (ident, value) }
+  lazy val datatypeParam : PackratParser[(Identifier, Literal)] = identifier ~ ("=" ~> literal) ^^ { case ident ~ value => (ident, value) }
 
-  lazy val datatypeParams : PackratParser[Map[Identifier, String]] = rep(datatypeParam) ^^ { _.toMap }
+  lazy val datatypeParams : PackratParser[Map[Identifier, Literal]] = (("{" ~> rep(datatypeParam) <~ "}")?) ^^ { case None => Map[Identifier, Literal]()
+                                                                                                                 case Some(l) => l.toMap }
+
+  lazy val literalPattern : PackratParser[LiteralPattern] = (datatypeName?) ~ literal ^^ { case name ~ value => LiteralPattern(name, value) }
+    
+  lazy val datatypePattern : PackratParser[Datatype] = datatypeName ~ datatypeParams ^^ { case name ~ params => Datatype(name, params) }
 
   lazy val pattern : PackratParser[Pattern] = (
-      ("text"  | "empty" | "notAllowed") ^^ (Constant.apply _)
+      ("text"  | "empty" | "notAllowed") ^^ PrimitivePattern.apply
     | ("element" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Element(nc, p) }
     | ("attribute" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Attribute(nc, p) }
+    | "parent" ~> identifier ^^ Parent.apply
     | pattern ~ binOp ~ pattern ^^ { case p1 ~ op ~ p2 => ApplyBinOp(op, p1, p2) }
     | prefixUnOp ~ pattern ^^ { case op ~ p => ApplyUnOp(op, p) }
     | pattern ~ postfixUnOp ^^ { case p ~ op => ApplyUnOp(op, p) }
+    | literalPattern
     | identifier ^^ PatternIdentifier.apply
-    | "parent" ~> identifier ^^ Parent.apply
-    | (datatypeName?) ~ datatypeValue ^^ { case name ~ value => DataType(name, value) }
-    | datatypeName ~ datatypeParams ~ (("-" ~> pattern)?) ^^ { case name ~ params ~ except => ComplexDataType(name, params, except.getOrElse(Constant("empty"))) }
+    | datatypePattern
     // TODO: external URI refs and grammar content
   )
 }

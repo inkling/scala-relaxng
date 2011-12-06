@@ -39,7 +39,7 @@ object AST {
   abstract class Declaration
   case class Namespace(name: Identifier, uriOrInherit: Either[URI, Inherit]) extends Declaration // namespace <name> = (<literal> | inherit)
   case class DefaultNamespace(name: Option[Identifier], uriOrInherit: Either[URI, Inherit]) extends Declaration 
-  case class Datatypes(name: Identifier, value: String) extends Declaration
+  case class Datatypes(name: Identifier, value: Literal) extends Declaration
   case class Inherit() // Namespace constant
   
   /**
@@ -54,15 +54,15 @@ object AST {
    * A pattern matches XML content directly, either attributes or xml
    */
   abstract class Pattern
-  case class Constant(raw: String) extends Pattern // text | empty | notAllowed
+  case class PrimitivePattern(raw: String) extends Pattern // text | empty | notAllowed
   case class Element(name: NameClass, pattern: Pattern) extends Pattern
   case class Attribute(name: NameClass, pattern: Pattern) extends Pattern
   case class ApplyBinOp(op: BinOp, left: Pattern, right: Pattern) extends Pattern
   case class ApplyUnOp(op: UnOp, pattern: Pattern) extends Pattern
   case class PatternIdentifier(name: Identifier) extends Pattern
   case class Parent(name: Identifier) extends Pattern
-  case class DataType(name: Option[DataTypeName], value: String) extends Pattern
-  case class ComplexDataType(name: DataTypeName, params: Map[Identifier, String], except: Pattern) extends Pattern
+  case class LiteralPattern(dataType: Option[DatatypeName], value: Literal) extends Pattern
+  case class Datatype(name: DatatypeName, params: Map[Identifier, Literal]) extends Pattern // Grammar refers to exceptPattern but we don't use it and they don't either in their tutorial
   case class ExternalRef(uri: URI, inherit: Boolean) extends Pattern
   case class Grammar(grammar: Seq[GrammarContent]) extends Pattern
 
@@ -83,13 +83,14 @@ object AST {
   case class NCName(raw: String) // See http://www.w3.org/TR/REC-xml-names/ for actual allowed strings
 
   /**
-   * DataTypeName is either a colon-separated name or the built-in types "string" and "token"
+   * DatatypeName is either a colon-separated name or the built-in types "string" and "token"
    */
-  abstract class DataTypeName
-  case class PrimitiveDataType(raw: String) extends DataTypeName // "string" | "token"
-  case class DataTypeCName(name: CName) extends DataTypeName
+  abstract class DatatypeName
+  case class PrimitiveDatatype(raw: String) extends DatatypeName // "string" | "token"
+  case class DatatypeCName(name: CName) extends DatatypeName
 
   case class AssignOp(raw: String) /** = |= &= */
   case class BinOp(raw: String) /** & | */
   case class UnOp(raw: String) /** * + list mixed */
+  case class Literal(raw: String)
 }

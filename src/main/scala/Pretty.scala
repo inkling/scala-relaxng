@@ -26,10 +26,18 @@ import AST._
 import scala.text._
 import scala.text.Document._
 
+/**
+ * Type class for pretty-printing a value to scala.text.Document
+ */
 trait Pretty[T] {
   def pretty(v: T) : Document
 }
 
+/**
+ * Pretty instances for classes in com.inkling.relaxng.AST
+ *
+ * These are broken down very finely to facilitate testing and debugging: most AST nodes have their own instance.
+ */
 object Pretty { 
   companion =>
     def pretty[T](v: T)(implicit p: Pretty[T]) : Document = p.pretty(v)
@@ -38,36 +46,63 @@ object Pretty {
       def pretty(v: T) = f(v)
     }
 
+    def parens(doc: Document) : Document = text("(") :: doc :: text(")")
+    def braces(doc: Document) : Document = text("{") :: doc :: text("}")
+
     implicit def prettyUnOp = Pretty { op: UnOp => text(op.raw) }
     implicit def prettyBinOp = Pretty { op: BinOp => text(op.raw) }
-    implicit def prettyNameClass = Pretty { nc: NameClass => text("\"\"") }
     implicit def prettyNCName = Pretty { ncName: NCName => text(ncName.raw) }
-    implicit def prettyCName : Pretty[CName] = Pretty { cName: CName => pretty(cName.prefix) :: text(":") :: pretty(cName.suffix) }
+    implicit def prettyCName : Pretty[CName] = Pretty { cName: CName => pretty(cName.prefix) :/: text(":") :/: pretty(cName.suffix) }
+    implicit def prettyIdentifier : Pretty[Identifier] = Pretty { ident: Identifier => text(ident.raw) }
+    
+    implicit def prettyAnyNameClass : Pretty[AnyNameClass] = Pretty { 
+      case AnyNameClass(None) => text("*")
+      case AnyNameClass(Some(ns)) => pretty(ns) :: text(":*")
+    }
 
-    implicit def prettyPattern : Pretty[Pattern] = new Pretty[Pattern] { 
-      def pretty(p: Pattern) : Document = p match {
-        case Constant(raw) => text(raw)
-        //case Element(nameClass, pattern) =>  text("element") :: companion.pretty(nameClass) :: pretty(pattern)
-      }
-  }
-    /*
-    case class Attribute(name: NameClass, pattern: Pattern) extends Pattern
-    case class ApplyBinOp(op: BinOp, left: Pattern, right: Pattern) extends Pattern
-    case class ApplyUnOp(op: UnOp, pattern: Pattern) extends Pattern
-    case class PatternIdentifier(name: Identifier) extends Pattern
-  case class Parent(name: Identifier) extends Pattern
-  case class DataType(name: Option[DataTypeName], value: String) extends Pattern
-  case class ComplexDataType(name: DataTypeName, params: Map[Identifier, String], except: Pattern) extends Pattern
-  case class ExternalRef(uri: URI, inherit: Boolean) extends Pattern
-  case class Grammar(grammar: Seq[GrammarContent]) extends Pattern
+    implicit def prettyNameClass : Pretty[NameClass] = Pretty { 
+      case OrNameClass(left, right) => parens(pretty(left) :/: text("|") :/: pretty(right))
+      case ExceptNameClass(any, except) => parens(pretty(any) :/: text("- ") :: pretty(except))
+      case any:AnyNameClass => pretty(any)
+    }
 
-* abstract class NameClass
-  abstract class Name extends NameClass
-  case class NsName(ns: NCName, except: NameClass) extends NameClass
-  case class AnyName(ns: NCName, except: NameClass) extends NameClass
-  case class OrName(left: NameClass, right: NameClass) extends NameClass
+    def prefix(op: UnOp) : Boolean = op.raw match { case "list" | "mixed"  => true; case _ => false }
+    def postfix(op: UnOp) : Boolean = op.raw match { case "*" | "+"  => true; case _ => false }
+
+    implicit def prettyDatatypeName : Pretty[DatatypeName] = Pretty {
+      case PrimitiveDatatype(raw) => text(raw)
+      case DatatypeCName(name) => pretty(name)
+    }
+
+    implicit def prettyLiteral : Pretty[Literal] = Pretty { l => text("\"" + l.raw + "\"") } // TODO: escape properly, then adjust Arbitrary instance
+
+    def prettyParam(key: Identifier, value: Literal) = pretty(key) :: text(" = ") :: pretty(value)
+    implicit def prettyParams : Pretty[Map[Identifier, Literal]] = Pretty {
+      params =>
+        if (params.isEmpty) { empty }
+        else braces {
+          (for((key, value) <- params) yield prettyParam(key, value)).reduce(_ :/: _)
+        }
+    }
+
+    implicit def prettyLiteralPattern : Pretty[LiteralPattern] = Pretty {
+      case LiteralPattern(None, value) => pretty(value)
+      case LiteralPattern(Some(name), value) => pretty(name) :/: pretty(value)
+    }
+      
+    implicit def prettyDatatype : Pretty[Datatype] = Pretty { case Datatype(name, params) => pretty(name) :/: pretty(params) }
   
-  case class Identifier(raw: String) extends Name
-  case class CName(prefix: NCName, suffix: NCName) extends Name
-*/
+    implicit def prettyPattern : Pretty[Pattern] = Pretty { 
+      case PrimitivePattern(raw) => text(raw)
+      case Element(nameClass, pattern) =>  text("element") :/: pretty(nameClass) :/: text("{") :/: pretty(pattern) :/: text("}")
+      case Attribute(nameClass, pattern) => text("attribute") :/: pretty(nameClass) :/: text("{") :/: pretty(pattern) :/: text("}")
+      case ApplyBinOp(op, left, right) => parens(pretty(left) :/: pretty(op) :/: pretty(right))
+      case ApplyUnOp(op, p) if prefix(op) => parens(pretty(op) :/: pretty(p))
+      case ApplyUnOp(op, p) if postfix(op) => parens(pretty(p) :/: pretty(op))
+      case PatternIdentifier(name) => pretty(name)
+      case Parent(name) => text("parent") :/: pretty(name)
+      case l:LiteralPattern => pretty(l)
+      case d:Datatype => pretty(d)
+      // TODO: external refs and grammar content
+    }
 }

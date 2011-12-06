@@ -29,13 +29,19 @@ import org.scalacheck._
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen._
 
+/**
+ * ScalaCheck instances for classes in com.inkling.relaxng.AST
+ *
+ * For isolating test failures, most AST node classes have their own arbitrary instance.
+ */
 object ArbitraryInstances {
   implicit def arbUnOp : Arbitrary[UnOp] = Arbitrary(for(raw <- oneOf(Seq("*", "+", "list", "mixed"))) yield UnOp(raw))
   implicit def arbBinOp : Arbitrary[BinOp] = Arbitrary(for(raw <- oneOf(Seq("&", "|", ","))) yield BinOp(raw))
   implicit def arbAssignOp : Arbitrary[AssignOp] = Arbitrary(for(raw <- oneOf("=", "|=", "&=")) yield AssignOp(raw))
 
-  implicit def arbDataTypeName : Arbitrary[DataTypeName] = Arbitrary(oneOf(resultOf(PrimitiveDataType),
-                                                                           resultOf(DataTypeCName)))
+  implicit def arbPrimitiveDatatype : Arbitrary[PrimitiveDatatype] = Arbitrary(oneOf("string", "token") flatMap(PrimitiveDatatype.apply))
+  implicit def arbDatatypeName : Arbitrary[DatatypeName] = Arbitrary(oneOf(arbitrary[PrimitiveDatatype],
+                                                                           resultOf(DatatypeCName)))
 
   implicit def arbAnyNameClass : Arbitrary[AnyNameClass] = Arbitrary(resultOf(AnyNameClass))
 
@@ -49,17 +55,20 @@ object ArbitraryInstances {
   implicit def arbCName : Arbitrary[CName] = Arbitrary(resultOf(CName))
   implicit def arbName : Arbitrary[Name] = Arbitrary(oneOf(arbitrary[Identifier], arbitrary[CName]))
 
-  def genDataTypeValue : Gen[String] = Gen.alphaStr
+  implicit def arbLiteral : Arbitrary[Literal] = Arbitrary(alphaStr.flatMap(Literal.apply))
 
-  implicit def arbPattern : Arbitrary[Pattern] = Arbitrary(oneOf(oneOf("text", "empty", "notAllowed") flatMap(Constant.apply),
+  implicit def arbLiteralPattern : Arbitrary[LiteralPattern] = Arbitrary(resultOf(LiteralPattern))
+
+  implicit def arbDatatype : Arbitrary[Datatype] = Arbitrary(resultOf(Datatype))
+
+  implicit def arbPattern : Arbitrary[Pattern] = Arbitrary(oneOf(oneOf("text", "empty", "notAllowed") flatMap(PrimitivePattern.apply),
                                                                  wrap(resultOf(Element)),
                                                                  wrap(resultOf(Attribute)),
                                                                  wrap(resultOf(ApplyBinOp)),
                                                                  wrap(resultOf(ApplyUnOp)),
-                                                                 wrap(resultOf(PatternIdentifier)),
+                                                                 arbitrary[LiteralPattern],
                                                                  wrap(resultOf(Parent)),
-                                                                 for(name <- arbitrary[Option[DataTypeName]]; value <- genDataTypeValue) yield DataType(name, value),
-                                                                 wrap(resultOf(ComplexDataType))))
+                                                                 arbitrary[Datatype]))
                             // TODO: external refs and grammar content
 
   implicit def arbURI : Arbitrary[URI] = Arbitrary(new URI("http://please/create/arbitrary/URI"))
