@@ -73,14 +73,8 @@ object AST {
   case class AnyNameClass(ns: Option[NCName]) extends NameClass // [<ns>:]*
   case class ExceptNameClass(any: AnyNameClass, except: NameClass) extends NameClass // <any> - <except>
   case class OrNameClass(left: NameClass, right: NameClass) extends NameClass // <nameClass> | <nameClass>
-  
-  /**
-   * A Name is an identifier or colon-separated name
-   */
-  abstract class Name extends NameClass
-  case class Identifier(raw: String) extends Name
-  case class CName(prefix: NCName, suffix: NCName) extends Name
-  case class NCName(raw: String) // See http://www.w3.org/TR/REC-xml-names/ for actual allowed strings
+  case class Identifier(raw: String) extends NameClass
+  case class CName(prefix: NCName, suffix: NCName) extends NameClass
 
   /**
    * DatatypeName is either a colon-separated name or the built-in types "string" and "token"
@@ -89,6 +83,7 @@ object AST {
   case class PrimitiveDatatype(raw: String) extends DatatypeName // "string" | "token"
   case class DatatypeCName(name: CName) extends DatatypeName
 
+  case class NCName(raw: String) // See http://www.w3.org/TR/REC-xml-names/ for actual allowed strings
   case class AssignOp(raw: String) /** = |= &= */
   case class BinOp(raw: String) /** & | */
   case class UnOp(raw: String) /** * + list mixed */

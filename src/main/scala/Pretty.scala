@@ -63,10 +63,6 @@ object Pretty {
     implicit def prettyNCName = Pretty { ncName: NCName => text(ncName.raw) }
     implicit def prettyCName : Pretty[CName] = Pretty { cName: CName => pretty(cName.prefix) :: text(":") :: pretty(cName.suffix) }
     implicit def prettyIdentifier : Pretty[Identifier] = Pretty { ident: Identifier => text(ident.raw) }
-    implicit def prettyName : Pretty[Name] = Pretty { 
-      case i:Identifier => pretty(i)
-      case c:CName => pretty(c)
-    }
     
     implicit def prettyAnyNameClass : Pretty[AnyNameClass] = Pretty { 
       case AnyNameClass(None) => text("*")
@@ -77,7 +73,8 @@ object Pretty {
       case OrNameClass(left, right) => parens(pretty(left) :/: text("|") :/: pretty(right))
       case ExceptNameClass(any, except) => parens(pretty(any) :/: text("- ") :: pretty(except))
       case any:AnyNameClass => pretty(any)
-      case n:Name => prettyName.pretty(n)
+      case c:CName => pretty(c)
+      case i:Identifier => pretty(i)
     }
 
     def prefix(op: UnOp) : Boolean = op.raw match { case "list" | "mixed"  => true; case _ => false }

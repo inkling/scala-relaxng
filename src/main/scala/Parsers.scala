@@ -45,8 +45,6 @@ object Parsers extends RegexParsers with PackratParsers {
 
   lazy val cName : PackratParser[CName] = colonPrefix ~ ncName ^^ { case prefix ~ suffix => CName(prefix, suffix) }
 
-  lazy val name : PackratParser[Name] = cName | identifier
-  
   lazy val identifier : PackratParser[Identifier] = not(keyword) ~> "[a-zA-Z][a-zA-Z0-9]*".r ^^ Identifier.apply
   
   lazy val keyword : PackratParser[String] = ("attribute" | "default" | "datatypes" | "div" | "element" | "empty" | "external"
@@ -64,7 +62,8 @@ object Parsers extends RegexParsers with PackratParsers {
 
   lazy val nameClass : PackratParser[NameClass] = (
       anyNameClass 
-    | name
+    | cName
+    | identifier
     | anyNameClass ~ ("-" ~> nameClass) ^^ { case any ~ except => ExceptNameClass(any, except) }
     | (nameClass <~ "|") ~ nameClass ^^ { case ~(left, right) => OrNameClass(left, right) }
     | "(" ~> nameClass <~ ")"

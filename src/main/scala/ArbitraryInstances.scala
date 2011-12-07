@@ -45,15 +45,15 @@ object ArbitraryInstances {
 
   implicit def arbAnyNameClass : Arbitrary[AnyNameClass] = Arbitrary(resultOf(AnyNameClass))
 
-  implicit def arbNameClass : Arbitrary[NameClass] = Arbitrary(frequency(2 -> arbitrary[Name],
-                                                                         2 -> arbitrary[AnyNameClass],
-                                                                         1 -> Gen.resultOf(ExceptNameClass),
-                                                                         1 -> Gen.wrap(Gen.resultOf(OrNameClass))))
+  implicit def arbNameClass : Arbitrary[NameClass] = Arbitrary(oneOf(arbitrary[Identifier],
+                                                                     arbitrary[CName],
+                                                                     arbitrary[AnyNameClass],
+                                                                     wrap(resultOf(ExceptNameClass)),
+                                                                     wrap(resultOf(OrNameClass))))
 
   implicit def arbIdentifier : Arbitrary[Identifier] = Arbitrary(identifier flatMap (Identifier(_)))
   implicit def arbNCName : Arbitrary[NCName] = Arbitrary(identifier flatMap (NCName(_)))
   implicit def arbCName : Arbitrary[CName] = Arbitrary(resultOf(CName))
-  implicit def arbName : Arbitrary[Name] = Arbitrary(oneOf(arbitrary[Identifier], arbitrary[CName]))
 
   implicit def arbLiteral : Arbitrary[Literal] = Arbitrary(alphaStr.flatMap(Literal.apply))
 

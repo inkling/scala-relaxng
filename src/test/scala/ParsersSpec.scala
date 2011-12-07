@@ -86,7 +86,8 @@ class ParsersSpec extends Spec with Checkers {
     describe("parse succeeds on some simple known patterns") {
       Seq("empty"                 -> PrimitivePattern("empty"),
           "(empty)"               -> PrimitivePattern("empty"),
-          "element foo { empty }" -> Element(Identifier("foo"), PrimitivePattern("empty")))
+          "element foo { empty }" -> Element(Identifier("foo"), PrimitivePattern("empty")),
+          "element foo {empty\n}" -> Element(Identifier("foo"), PrimitivePattern("empty")))
        
         .foreach { case (string, expected) => checkit(string) { parse(pattern, string).get =? expected } }
     }
