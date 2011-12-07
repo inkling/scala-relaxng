@@ -55,30 +55,58 @@ class ParsersSpec extends Spec with Checkers {
   def noThrow[P](f: => P)(implicit p: P => Prop) : Prop = try { p(f) } catch { case _ => false }
 
   //def equal[T](expected: T, got: T)(implicit p : Pretty[T]) : Prop = expecte
+  def parseExpecting[T](parser: Parser[T], s: String, expected: T)(implicit p: Pretty[T]) : Prop = 
+    try {
+      val result = parse(parser, s).get
+      "input = %s".format(s) |:
+      "output = %s /// %s".format(prettyString(result), result) |: 
+      (result == expected)
+    } catch {
+      case _ => "input failed to parse: %s".format(s) |: falsified
+      //case _:RuntimeException => falsified
+    }
 
   def parsePretty[T](gen: Gen[T])(parser: Parser[T])(implicit p: Pretty[T]) : Prop = 
     forAll(gen) { 
       v: T => 
-        val result = parse(parser, show(v)).get
-        "input = " + v |:
-        "output = " + result |: 
-        (v == result)
+        try {
+          val result = parse(parser, show(v)).get
+          "input = %s /// %s".format(prettyString(v), v) |:
+          "output = %s /// %s".format(prettyString(result), result) |: 
+          (v == result)
+        } catch {
+          case _ => "input failed to parse: %s (%s)".format(prettyString(v), v) |: falsified
+          //case _:RuntimeException => falsified
+        }
     }
 
   def parsePretty[T](parser: Parser[T])(implicit arb: Arbitrary[T], p: Pretty[T]) : Prop = parsePretty(arbitrary[T])(parser)
 
   describe("A RelaxNg (compact) parser") {
+    describe("parse succeeds on some simple known patterns") {
+      Seq("empty"                 -> PrimitivePattern("empty"),
+          "(empty)"               -> PrimitivePattern("empty"),
+          "element foo { empty }" -> Element(Identifier("foo"), PrimitivePattern("empty")))
+       
+        .foreach { case (string, expected) => checkit(string) { parse(pattern, string).get =? expected } }
+    }
+
     describe("identity == (parse . pretty)") {
-      checkit("unary operators")  { parsePretty(postfixUnOp | prefixUnOp) }
-      checkit("binary operators") { parsePretty(binOp) }
-      checkit("non-colon names") { parsePretty(ncName) }
-      checkit("colon names") { parsePretty(cName) }
-      checkit("literals") { parsePretty(literal) }
-      checkit("datatype names") { parsePretty(datatypeName) }
-      checkit("literal patterns") { parsePretty(literalPattern) }
+      checkit("unary operators")     { parsePretty(postfixUnOp | prefixUnOp) }
+      checkit("binary operators")    { parsePretty(binOp) }
+      checkit("non-colon names")     { parsePretty(ncName) }
+      checkit("colon names")         { parsePretty(cName) }
+      checkit("literals")            { parsePretty(literal) }
+      checkit("datatype names")      { parsePretty(datatypeName) }
+      checkit("primitive patterns")  { parsePretty(primitivePattern) }
+      checkit("literal patterns")    { parsePretty(literalPattern) }
       checkit("datatype parameters") { parsePretty(datatypeParams) }
-      checkit("datatype patterns") { parsePretty(datatypePattern) }
-      checkit("parent patterns") { parsePretty(parent) }
+      checkit("datatype patterns")   { parsePretty(datatypePattern) }
+      checkit("parent patterns")     { parsePretty(parent) }
+      checkit("all leaf patterns")   { parsePretty(leafPattern)(pattern) }
+
+      //checkit("depth-1 patterns")    { parsePretty(patternOfDepth(1))(pattern) }
+      //checkit("unary op app")        { parsePretty(applyUnOp) }
       // Not quite yet... checkit("patterns") { parsePretty(pattern) }
     }
   }

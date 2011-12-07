@@ -60,15 +60,30 @@ object ArbitraryInstances {
   implicit def arbLiteralPattern : Arbitrary[LiteralPattern] = Arbitrary(resultOf(LiteralPattern))
   implicit def arbDatatype : Arbitrary[Datatype] = Arbitrary(resultOf(Datatype))
   implicit def arbParent : Arbitrary[Parent] = Arbitrary(resultOf(Parent))
-  implicit def arbPattern : Arbitrary[Pattern] = Arbitrary(oneOf(oneOf("text", "empty", "notAllowed") flatMap(PrimitivePattern.apply),
-                                                                 wrap(resultOf(Element)),
-                                                                 wrap(resultOf(Attribute)),
-                                                                 wrap(resultOf(ApplyBinOp)),
-                                                                 wrap(resultOf(ApplyUnOp)),
-                                                                 arbitrary[LiteralPattern],
-                                                                 arbitrary[Parent],
-                                                                 arbitrary[Datatype]))
-                            // TODO: external refs and grammar content
+  implicit def arbPrimitivePattern : Arbitrary[PrimitivePattern] = Arbitrary(oneOf("text", "empty", "notAllowed") flatMap(PrimitivePattern.apply))
+
+  def leafPattern : Gen[Pattern] = oneOf(arbitrary[LiteralPattern],
+                                         arbitrary[Parent],
+                                         arbitrary[PrimitivePattern],
+                                         arbitrary[Datatype])
+                            // TODO: external refs 
+
+  implicit def arbApplyUnOp : Arbitrary[ApplyUnOp] = Arbitrary(resultOf(ApplyUnOp))
+
+  def recursivePattern(subPattern: Gen[Pattern]) : Gen[Pattern] = {
+    implicit def arbitrarySubPattern = Arbitrary(subPattern)
+    frequency(1 -> leafPattern,
+              3 -> oneOf(resultOf(Element),
+                         resultOf(Attribute),
+                         resultOf(ApplyUnOp),
+                         resultOf(ApplyBinOp)))
+    // TODO: grammar content
+  }
+
+  def patternOfDepth(d: Int) : Gen[Pattern] = if (d <= 0) leafPattern
+                                              else wrap(recursivePattern(patternOfDepth(d-1)))
+  
+  implicit def arbPattern : Arbitrary[Pattern] = Arbitrary(arbitrary[Int] flatMap patternOfDepth) // Arbitrary depth pattern
 
   implicit def arbURI : Arbitrary[URI] = Arbitrary(new URI("http://please/create/arbitrary/URI"))
 
@@ -87,3 +102,4 @@ object ArbitraryInstances {
                                                                                   Gen.listOf(arbitrary[GrammarContent]) flatMap(Right(_))))
                                                          yield Schema(decls, content))
 }
+

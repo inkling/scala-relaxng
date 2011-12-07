@@ -31,7 +31,7 @@ import scala.util.parsing.input._
  */
 object Parsers extends RegexParsers with PackratParsers {
 
-  def parse[T](p: Parser[T], s : String) : ParseResult[T] = phrase(p)(new PackratReader(new CharArrayReader(s.toArray)))
+  def parse[T](p: Parser[T], s : String) : ParseResult[T] = p(new PackratReader(new CharArrayReader(s.toArray)))
 
   lazy val postfixUnOp : PackratParser[UnOp] = ("*" | "+") ^^ UnOp.apply
 
@@ -44,8 +44,14 @@ object Parsers extends RegexParsers with PackratParsers {
   lazy val ncName : PackratParser[NCName] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ NCName.apply // For now, just alphanumeric strings
 
   lazy val cName : PackratParser[CName] = colonPrefix ~ ncName ^^ { case prefix ~ suffix => CName(prefix, suffix) }
+
+  lazy val name : PackratParser[Name] = cName | identifier
   
-  lazy val identifier : PackratParser[Identifier] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ Identifier.apply
+  lazy val identifier : PackratParser[Identifier] = not(keyword) ~> "[a-zA-Z][a-zA-Z0-9]*".r ^^ Identifier.apply
+  
+  lazy val keyword : PackratParser[String] = ("attribute" | "default" | "datatypes" | "div" | "element" | "empty" | "external"
+                                              | "grammar" | "include" | "inherit" | "list" | "mixed" | "namespace" | "notAllowed"
+                                              | "parent" | "start" | "string" | "text" | "token")
 
   lazy val datatypeName : PackratParser[DatatypeName] = (
       ("string" | "token") ^^ PrimitiveDatatype.apply
@@ -58,6 +64,7 @@ object Parsers extends RegexParsers with PackratParsers {
 
   lazy val nameClass : PackratParser[NameClass] = (
       anyNameClass 
+    | name
     | anyNameClass ~ ("-" ~> nameClass) ^^ { case any ~ except => ExceptNameClass(any, except) }
     | (nameClass <~ "|") ~ nameClass ^^ { case ~(left, right) => OrNameClass(left, right) }
     | "(" ~> nameClass <~ ")"
@@ -70,21 +77,25 @@ object Parsers extends RegexParsers with PackratParsers {
                                                                                                                  case Some(l) => l.toMap }
 
   lazy val literalPattern : PackratParser[LiteralPattern] = (datatypeName?) ~ literal ^^ { case name ~ value => LiteralPattern(name, value) }
-    
+  lazy val primitivePattern : PackratParser[PrimitivePattern] = ("text" | "empty" | "notAllowed") ^^ PrimitivePattern.apply
   lazy val datatypePattern : PackratParser[Datatype] = datatypeName ~ datatypeParams ^^ { case name ~ params => Datatype(name, params) }
   lazy val parent : PackratParser[Parent] = "parent" ~> identifier ^^ Parent.apply
+  lazy val applyUnOp : PackratParser[ApplyUnOp] = (
+      prefixUnOp ~ ("{" ~> pattern <~ "}") ^^ { case op ~ p => ApplyUnOp(op, p) }
+    | pattern ~ postfixUnOp ^^ { case p ~ op => ApplyUnOp(op, p) }
+  )
 
   lazy val pattern : PackratParser[Pattern] = (
-      ("text"  | "empty" | "notAllowed") ^^ PrimitivePattern.apply
+      primitivePattern
     | ("element" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Element(nc, p) }
     | ("attribute" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Attribute(nc, p) }
-    | parent
     | pattern ~ binOp ~ pattern ^^ { case p1 ~ op ~ p2 => ApplyBinOp(op, p1, p2) }
-    | prefixUnOp ~ pattern ^^ { case op ~ p => ApplyUnOp(op, p) }
-    | pattern ~ postfixUnOp ^^ { case p ~ op => ApplyUnOp(op, p) }
+    | applyUnOp
     | literalPattern
-    | identifier ^^ PatternIdentifier.apply
     | datatypePattern
+    | parent
+    | identifier ^^ PatternIdentifier.apply
+    | "(" ~> pattern <~ ")"
     // TODO: external URI refs and grammar content
   )
 }
