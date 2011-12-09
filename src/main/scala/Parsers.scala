@@ -40,7 +40,7 @@ object Parsers extends RegexParsers with PackratParsers {
   def load(fileName: File) : ParseResult[Schema] = {
     /* holy wtf */
     val input = new PagedSeqReader( PagedSeq.fromReader(new BufferedReader( new FileReader(fileName))))
-    parse(schema, new PackratReader(input))
+    parse(phrase(schema), new PackratReader(input))
   }
 
   def braces[T](p: PackratParser[T]) : PackratParser[T] = "{" ~> p <~ "}"

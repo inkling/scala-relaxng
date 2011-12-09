@@ -83,6 +83,7 @@ class ParsersSpec extends Spec with Checkers {
 
     describe("parses sample schemas correctly") {
       checkSamples(schema, Samples.Canonical.schemas)
+      checkSamples(schema, Samples.NonCanonical.schemas)
     }
   }
 }

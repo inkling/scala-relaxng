@@ -83,6 +83,7 @@ object Samples {
 
     val schemas = Seq[(String, Schema)](
       "empty"                            -> Schema(Seq(), Left(PrimitivePattern("empty"))),
+      "element foo { empty }"            -> Schema(Seq(), Left(Element(NCName("foo"), PrimitivePattern("empty")))),
       "start = empty"                    -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), PrimitivePattern("empty"))))),
       "start = empty\n start |= string"  -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), PrimitivePattern("empty")),
                                                                     Define(NCName("start"), AssignOp("|="), Datatype(PrimitiveDatatype("string")))))),
@@ -111,11 +112,9 @@ object Samples {
     val grammarContent = Seq("foo = baz"                          -> Define(NCName("foo"), AssignOp("="), NCNamePattern(NCName("baz"))),
                              "div { }"                            -> Div(Seq()))
 
-    val schemas = Seq("empty"                            -> Schema(Seq(), Left(PrimitivePattern("empty"))),
-                      "start = empty"                    -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), PrimitivePattern("empty"))))),
-                      "start = empty\n start |= string"  -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), PrimitivePattern("empty")),
-                                                                                      Define(NCName("start"), AssignOp("|="), Datatype(PrimitiveDatatype("string")))))),
-                      "namespace foo = inherit\n start &= string" -> Schema(Seq(Namespace(NCName("foo"), Right(Inherit()))),
-                                                                            Right(Seq(Define(NCName("start"), AssignOp("&="), PrimitiveDatatype("string"))))))
+    val schemas = Seq("start = empty\n\n\nstart |= string"  -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), PrimitivePattern("empty")),
+                                                                                       Define(NCName("start"), AssignOp("|="), Datatype(PrimitiveDatatype("string")))))),
+                      "namespace foo = inherit \n \n start &= string" -> Schema(Seq(Namespace(NCName("foo"), Right(Inherit()))),
+                                                                                Right(Seq(Define(NCName("start"), AssignOp("&="), PrimitiveDatatype("string"))))))
   }
 }

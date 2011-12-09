@@ -33,7 +33,13 @@ import java.io.File
 object Main {
   def main(args: Array[String]) {
     for(filename <- args) {
-      println(prettyString(load(new File(filename)).get))
+      load(new File(filename)) match {
+        case Success(schema, _) =>
+          //println(schema)
+          println(prettyString(schema))
+
+        case _  => println("Parse failure for " + filename)
+      }
     }
   }
 }
