@@ -9,6 +9,10 @@ The three components are:
  2. A parser for the abstract syntax
  3. A pretty-printer for the abstract syntax
 
+For now, use via "sbt publish-local" and add this to your build.sbt 
+
+libraryDependencies += "com.inkling" %% "relaxng" % "0.1"
+
 Dependencies:
 -------------
 
