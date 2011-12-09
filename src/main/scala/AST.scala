@@ -33,14 +33,6 @@ object AST {
    */
   case class Schema(decl: Seq[Declaration] = Seq(), content: Either[Pattern, Seq[GrammarContent]]) // topLevel
 
-  /* canonical injections into coproducts */
-  //implicit def inL[L, R](l:L) : Either[L, R] = Left(l)
-  //implicit def inR[L, R](r:R) : Either[L, R] = Right(r)
-  //implicit def some[T](v:T) : Option[T] = Some(v)
-
-  //implicit def patternToSchemaPattern(p:Pattern) : Either[Pattern, Seq[GrammarContent]] = Left(p)
-  //implicit def grammarToSchemaGrammar(g:Seq[GrammarContent]) : Either[Pattern, Seq[GrammarContent]] = Right(g)
-
   /**
    * A schema may start with some namespaces or datatypes declarations before any grammar content
    */
@@ -70,7 +62,8 @@ object AST {
   case class NCNamePattern(name: NCName) extends Pattern
   case class Parent(name: NCName) extends Pattern
   case class LiteralPattern(dataType: Option[DatatypeName], value: Literal) extends Pattern
-  case class Datatype(name: DatatypeName, params: Map[NCName, Literal] = Map()) extends Pattern // Grammar refers to exceptPattern but we don't use it and they don't either in their tutorial
+  case class Datatype(name: DatatypeName, params: Map[NCName, Literal] = Map()) extends Pattern 
+  /* case class ExceptPattern(datatype: Datatype, except: Pattern) // Never seen in the wild, but in the EBNF; TODO */
   case class ExternalRef(uri: URI, inherit: Boolean) extends Pattern
   case class Grammar(grammar: Seq[GrammarContent]) extends Pattern
 
