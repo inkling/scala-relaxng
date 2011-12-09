@@ -96,10 +96,14 @@ object ArbitraryInstances {
   /*
    * Patterns
    */
+  
   implicit def arbLiteralPattern : Arbitrary[LiteralPattern] = Arbitrary(resultOf(LiteralPattern))
-  implicit def arbDatatype : Arbitrary[Datatype] = Arbitrary(resultOf(Datatype))
   implicit def arbParent : Arbitrary[Parent] = Arbitrary(resultOf(Parent))
   implicit def arbPrimitivePattern : Arbitrary[PrimitivePattern] = Arbitrary(oneOf("text", "empty", "notAllowed") flatMap(PrimitivePattern.apply))
+  implicit def arbDatatype : Arbitrary[Datatype] = Arbitrary(for(name <- arbitrary[DatatypeName];
+                                                                 paramCount <- choose(0, 10);
+                                                                 params <- listOfN(paramCount, arbitrary[(NCName, Literal)]))
+                                                             yield Datatype(name, params.toMap))
 
   def leafPattern : Gen[Pattern] = oneOf(arbitrary[LiteralPattern],
                                          arbitrary[Parent],
