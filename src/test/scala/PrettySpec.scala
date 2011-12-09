@@ -33,6 +33,7 @@ import scala.text.Document
 
 import java.io.StringWriter
 import java.net.URI
+import scala.util.matching.Regex
 
 import org.scalatest._
 import org.scalatest.prop._
@@ -41,48 +42,39 @@ import org.scalacheck.Gen._
 import org.scalacheck.Prop._
 import org.scalacheck.Arbitrary._
 
-/**
- * A basic spec for parsers to ensure all fundamental constructs
- * and regressions are passing. See [[com.inkling.relaxng.test.ParsePretty]]
- * for a more thorough spec.
- */
-class ParsersSpec extends Spec with Checkers {
+class PrettySpec extends Spec with Checkers {
 
   /** Little wrapper because I never "it" without a "check" */
   def checkit(description: String)(prop: Prop) { it(description) { check(prop) } }
-  
+
+  /** Compresses multiple space characters to one and trim leading/trailing and those near parens
+   * TODO: don't be so lenient on the pretty-printer */
+  def compress(s: String) : String = replace("\\(\\s+".r, "(", replace("\\s+\\)".r, ")", replace("\\s+".r, " ", replace("\\s+}".r, "}", replace("\\{\\s+".r, "{", s))))).trim
+
+  /** flip regex.replaceAllIn */
+  def replace(regex: Regex, result: String, s: String) = regex.replaceAllIn(s, result)
+
   /** Test a list of samples */
-  def checkSamples[T](parser: Parser[T], samples: Seq[(String, T)])(implicit p: Pretty[T]) {
-    samples.foreach { case (string, ast) => checkit(string) { parseAll(parser, string).get ?= ast } }
+  def checkSamples[T](samples: Seq[(String, T)])(implicit p: Pretty[T]) {
+    samples.foreach { case (string, ast) => checkit(string) { compress(prettyString(ast)) ?= compress(string) } }
   }
 
-  describe("A RelaxNg (compact) parser") {
+  describe("A RelaxNg pretty-printer") {
+    describe("prints canonical sample correctly modulo whitespace") { checkSamples(Samples.Canonical.nameClasses) }
 
-    describe("parses sample name classes correctly") {
-      checkSamples(nameClass, Samples.Canonical.nameClasses)
-      checkSamples(nameClass, Samples.NonCanonical.nameClasses)
-    }
+    describe("prints canonical sample patterns correctly, modulo whitespace") { checkSamples(Samples.Canonical.patterns) }
 
-    describe("parses sample datatype params correctly") {
-      checkSamples(datatypeParams, Samples.Canonical.params)
-    }
-
-    describe("parses sample patterns correctly") {
-      checkSamples(pattern, Samples.Canonical.patterns)
-      checkSamples(pattern, Samples.NonCanonical.patterns)
-    }
-
-    describe("parses sample declarations correctly") {
-      checkSamples(declaration, Samples.Canonical.declarations)
-      checkSamples(declaration, Samples.NonCanonical.declarations)
+    describe("prints canonical sample declarations correctly, modulo whitespace") {
+      checkSamples(Samples.Canonical.declarations)
     }
     
-    describe("parses sample grammar content correctly") {
-      checkSamples(grammarContent, Samples.Canonical.grammarContents)
+    describe("prints canonical sample grammar content correctly, modulo whitespace") {
+      checkSamples(Samples.Canonical.grammarContents)
     }
 
-    describe("parses sample schemas correctly") {
-      checkSamples(schema, Samples.Canonical.schemas)
+    describe("prints canonical sample schemas correctly, modulo whitespace") {
+      checkSamples(Samples.Canonical.schemas)
     }
   }
+
 }

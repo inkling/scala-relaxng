@@ -22,34 +22,46 @@
 package com.inkling.relaxng
 
 import AST._
-  
+
+import java.io.{File, FileReader, BufferedReader}  
+import java.net.URI
 import scala.util.parsing.combinator._
 import scala.util.parsing.input._
+import scala.collection.immutable._
 
 /**
  * Parser for RelaxNg Compact Syntax.
  */
 object Parsers extends RegexParsers with PackratParsers {
 
-  def parse[T](p: Parser[T], s : String) : ParseResult[T] = p(new PackratReader(new CharArrayReader(s.toArray)))
+  def parse[T](p: Parser[T], s : String) : ParseResult[T] = phrase(p)(new CharArrayReader(s.toArray))
+
+  /** Load a schema from a file */
+  def load(fileName: File) : ParseResult[Schema] = {
+    /* holy wtf */
+    val input = new PagedSeqReader( PagedSeq.fromReader(new BufferedReader( new FileReader(fileName))))
+    parse(schema, new PackratReader(input))
+  }
+
+  def braces[T](p: PackratParser[T]) : PackratParser[T] = "{" ~> p <~ "}"
+  def parens[T](p: PackratParser[T]) : PackratParser[T] = "(" ~> p <~ ")"
 
   lazy val postfixUnOp : PackratParser[UnOp] = ("*" | "+") ^^ UnOp.apply
-
   lazy val prefixUnOp : PackratParser[UnOp] = ("list" | "mixed") ^^ UnOp.apply
-
   lazy val binOp : PackratParser[BinOp] = ("&" | "|" | ",") ^^ BinOp.apply
+  lazy val assignOp : PackratParser[AssignOp] = ("=" | "&=" | "|=") ^^ AssignOp.apply
 
   lazy val colonPrefix : PackratParser[NCName] = ncName <~ ":"
   
-  lazy val ncName : PackratParser[NCName] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ NCName.apply // For now, just alphanumeric strings
+  lazy val ncName : PackratParser[NCName] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ NCName.apply // TODO: parse the spec
 
   lazy val cName : PackratParser[CName] = colonPrefix ~ ncName ^^ { case prefix ~ suffix => CName(prefix, suffix) }
 
-  lazy val identifier : PackratParser[Identifier] = not(keyword) ~> "[a-zA-Z][a-zA-Z0-9]*".r ^^ Identifier.apply
-  
-  lazy val keyword : PackratParser[String] = ("attribute" | "default" | "datatypes" | "div" | "element" | "empty" | "external"
+  lazy val identifier : PackratParser[NCName] = ((not(keyword) ~> ncName) | ("\\" ~> ncName))
+
+  lazy val keyword : PackratParser[NCName] = ("attribute" | "default" | "datatypes" | "div" | "element" | "empty" | "external"
                                               | "grammar" | "include" | "inherit" | "list" | "mixed" | "namespace" | "notAllowed"
-                                              | "parent" | "start" | "string" | "text" | "token")
+                                              | "parent" | "start" | "string" | "text" | "token") ^^ NCName.apply
 
   lazy val datatypeName : PackratParser[DatatypeName] = (
       ("string" | "token") ^^ PrimitiveDatatype.apply
@@ -57,23 +69,24 @@ object Parsers extends RegexParsers with PackratParsers {
   )
 
   lazy val literal : PackratParser[Literal] = "\"" ~> regex("[^\"]*".r) <~ "\"" ^^ Literal.apply // TODO: improve this; currently just strings w/out escapes
+  lazy val uri : PackratParser[URI] = literal ^^ { l => new URI(l.raw) }
 
-  lazy val anyNameClass : PackratParser[AnyNameClass] = (colonPrefix?) <~ "*" ^^ (AnyNameClass.apply _)
+  lazy val anyNameClass : PackratParser[WildcardNameClass] = (colonPrefix?) <~ "*" ^^ (WildcardNameClass.apply _)
 
   lazy val nameClass : PackratParser[NameClass] = (
-      anyNameClass 
-    | cName
-    | identifier
-    | anyNameClass ~ ("-" ~> nameClass) ^^ { case any ~ except => ExceptNameClass(any, except) }
+      anyNameClass ~ ("-" ~> nameClass) ^^ { case any ~ except => ExceptNameClass(any, except) }
     | (nameClass <~ "|") ~ nameClass ^^ { case ~(left, right) => OrNameClass(left, right) }
     | "(" ~> nameClass <~ ")"
+    | anyNameClass 
+    | cName
+    | identifier
   )
 
   
-  lazy val datatypeParam : PackratParser[(Identifier, Literal)] = identifier ~ ("=" ~> literal) ^^ { case ident ~ value => (ident, value) }
+  lazy val datatypeParam : PackratParser[(NCName, Literal)] = identifier ~ ("=" ~> literal) ^^ { case ident ~ value => (ident, value) }
 
-  lazy val datatypeParams : PackratParser[Map[Identifier, Literal]] = (("{" ~> rep(datatypeParam) <~ "}")?) ^^ { case None => Map[Identifier, Literal]()
-                                                                                                                 case Some(l) => l.toMap }
+  lazy val datatypeParams : PackratParser[Map[NCName, Literal]] = (("{" ~> rep(datatypeParam) <~ "}")?) ^^ { case None    => Map[NCName, Literal]()
+                                                                                                             case Some(l) => l.toMap }
 
   lazy val literalPattern : PackratParser[LiteralPattern] = (datatypeName?) ~ literal ^^ { case name ~ value => LiteralPattern(name, value) }
   lazy val primitivePattern : PackratParser[PrimitivePattern] = ("text" | "empty" | "notAllowed") ^^ PrimitivePattern.apply
@@ -85,16 +98,41 @@ object Parsers extends RegexParsers with PackratParsers {
   )
 
   lazy val pattern : PackratParser[Pattern] = (
-      primitivePattern
-    | ("element" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Element(nc, p) }
+      ("element" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Element(nc, p) }
     | ("attribute" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Attribute(nc, p) }
     | pattern ~ binOp ~ pattern ^^ { case p1 ~ op ~ p2 => ApplyBinOp(op, p1, p2) }
     | applyUnOp
     | literalPattern
     | datatypePattern
     | parent
-    | identifier ^^ PatternIdentifier.apply
+    | identifier ^^ NCNamePattern.apply
     | "(" ~> pattern <~ ")"
+    | primitivePattern
     // TODO: external URI refs and grammar content
   )
+
+  lazy val namespaceValue : PackratParser[Either[URI, Inherit]] = (
+      "inherit" ^^^ Right(Inherit())
+    | literal ^^ { l => Left(new URI(l.raw)) }
+  )
+
+  lazy val declaration: PackratParser[Declaration] = (
+      ("default" ~> "namespace" ~> (identifier?)) ~ ("=" ~> namespaceValue) ^^ { case ~(maybeIdent, v) => DefaultNamespace(maybeIdent, v) }
+    | ("namespace" ~> identifier) ~ ("=" ~> namespaceValue) ^^ { case ~(ident, v) => Namespace(ident, v) }
+    | ("datatypes" ~> identifier) ~ ("=" ~> literal) ^^ { case ~(ident, l) => Datatypes(ident, l) }
+  )
+
+  lazy val inherit: PackratParser[NCName] = "inherit"  ~> "=" ~> identifier
+
+  lazy val grammarContent: PackratParser[GrammarContent] = (
+      identifier ~ (assignOp ~ pattern) ^^ { case ~(name, ~(assign, pattern)) => Define(name, assign, pattern) }
+    | "start" ~> (assignOp ~ pattern) ^^ { case ~(assign, pattern) => Define(NCName("start"), assign, pattern) }
+    | "div" ~> braces(grammarContent*) ^^ Div.apply
+    | ("include" ~> literal) ~ ( (inherit?) ~ (braces(grammarContent*)?) ) ^^ { case ~(uri, ~(maybeInherit, None))    => Include(uri, maybeInherit, Seq())
+                                                                                case ~(uri, ~(maybeInherit, Some(l))) => Include(uri, maybeInherit, l) }
+  )
+
+  lazy val schema: PackratParser[Schema] = (declaration*) ~ (memo(pattern ^^ Left.apply)
+                                                             | (grammarContent*) ^^ Right.apply) ^^ { case ~(decls, content) => Schema(decls, content) }
+  
 }
