@@ -10,5 +10,5 @@ scalaVersion := "2.9.1"
 libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "1.6.1",
                             "org.scala-tools.testing" %% "scalacheck" % "1.9")
 
-scalacOptions ++= Seq("-deprecation", "-Xcheckinit")
+scalacOptions ++= Seq("-deprecation", "-Xcheckinit", "-unchecked")
 
