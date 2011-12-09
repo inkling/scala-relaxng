@@ -1,6 +1,6 @@
-name := "Scala Relax-NG Compact Syntax Parser"
+name := "relaxng"
 
-version := "1.0"
+version := "0.1"
 
 organization := "com.inkling"
 
