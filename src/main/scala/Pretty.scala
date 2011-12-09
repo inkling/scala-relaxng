@@ -183,7 +183,7 @@ object Pretty {
   }
 
   implicit def prettyGrammar : Pretty[Seq[GrammarContent]] = simple { g => if (g.size <= 0) empty 
-                                                                           else braces(nest(2, group(g.map(pretty[GrammarContent]).reduce(_:/:_)))) }
+                                                                           else braces(nest(2, group(g.map(pretty[GrammarContent]).reduce(_ :: text("\n") :/:_)))) }
 
   implicit def prettyGrammarContent : Pretty[GrammarContent] = simple {
     case Define(name, op, pattern) => pretty(name) :/: pretty(op) :/: pretty(pattern)
@@ -194,9 +194,9 @@ object Pretty {
   }
 
   implicit def prettySchema : Pretty[Schema] = simple {
-    s => (if (s.decl.size <= 0) empty else s.decl.map(pretty[Declaration]).reduce(_ :/: _)) :/: (s.content match {
+    s => (if (s.decl.size <= 0) empty else s.decl.map(pretty[Declaration]).reduce(_ :: text("\n") :/: _)) :/: (s.content match {
       case Left(pattern) => pretty(pattern)
-      case Right(grammar) => grammar.map(pretty[GrammarContent]).reduce(_ :/: _)
+      case Right(grammar) => grammar.map(pretty[GrammarContent]).reduce(_ :: text("\n") :/: _)
     })
   }
 }
