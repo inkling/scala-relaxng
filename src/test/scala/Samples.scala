@@ -59,7 +59,7 @@ object Samples {
       "empty"                          -> NCNamePattern(NCName("empty")),
       "bizzle"                         -> NCNamePattern(NCName("bizzle")),
       "foo.baz"                        -> NCNamePattern(NCName("foo.baz")),
-      "text.ident"                     -> NCNamePattern(NCName("text.ident")),
+      //"text.ident"                     -> NCNamePattern(NCName("text.ident")),
       "element foo { empty }"          -> Element(NCName("foo"), NCNamePattern(NCName("empty"))),
       "attribute foo { empty }"        -> Attribute(NCName("foo"), NCNamePattern(NCName("empty"))),
       "attribute foo { notAllowed }"   -> Attribute(NCName("foo"), NCNamePattern(NCName("notAllowed"))),
@@ -83,12 +83,12 @@ object Samples {
       "element foo { empty } | element baz { empty }" -> ApplyBinOp(BinOp("|"),
                                                                     Element(NCName("foo"), NCNamePattern(NCName("empty"))),
                                                                     Element(NCName("baz"), NCNamePattern(NCName("empty")))),
-      "element foo { empty } , element baz { empty }" -> ApplyBinOp(BinOp(","),
-                                                                    Element(NCName("foo"), NCNamePattern(NCName("empty"))),
-                                                                    Element(NCName("baz"), NCNamePattern(NCName("empty")))),
-      "element foo { empty } , attribute baz { x.y }" -> ApplyBinOp(BinOp(","),
-                                                                    Element(NCName("foo"), NCNamePattern(NCName("empty"))),
-                                                                    Attribute(NCName("baz"), NCNamePattern(NCName("x.y"))))
+      "element foo { empty }, element baz { empty }" -> ApplyBinOp(BinOp(","),
+                                                                   Element(NCName("foo"), NCNamePattern(NCName("empty"))),
+                                                                   Element(NCName("baz"), NCNamePattern(NCName("empty")))),
+      "element foo { empty }, attribute baz { x.y }" -> ApplyBinOp(BinOp(","),
+                                                                   Element(NCName("foo"), NCNamePattern(NCName("empty"))),
+                                                                   Attribute(NCName("baz"), NCNamePattern(NCName("x.y"))))
     )
 
     val declarations = Seq[(String, Declaration)](
