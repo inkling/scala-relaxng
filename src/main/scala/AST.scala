@@ -54,7 +54,6 @@ object AST {
    * A pattern matches XML content directly, either attributes or xml
    */
   abstract class Pattern
-  case class PrimitivePattern(raw: String) extends Pattern // text | empty | notAllowed
   case class Element(name: NameClass, pattern: Pattern) extends Pattern
   case class Attribute(name: NameClass, pattern: Pattern) extends Pattern
   case class ApplyBinOp(op: BinOp, left: Pattern, right: Pattern) extends Pattern

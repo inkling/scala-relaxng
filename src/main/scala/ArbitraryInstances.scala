@@ -49,7 +49,9 @@ object ArbitraryInstances {
   implicit def arbAssignOp : Arbitrary[AssignOp] = Arbitrary(for(raw <- oneOf("=", "|=", "&=")) yield AssignOp(raw))
 
   /** Generates an arbitrary valid colon-free name (TODO; currently just [[org.scalacheck.Gen.identifier]]) */
-  implicit def arbNCName : Arbitrary[NCName] = Arbitrary(Gen.identifier flatMap (NCName(_)))
+  implicit def arbNCName : Arbitrary[NCName] = Arbitrary(for(head <- oneOf(choose('a', 'z'), choose('A', 'Z'), '_');
+                                                             tl <- listOf(choose('a', 'z'), choose('A', 'Z'), choose('0', '9'), '-', '_', '.'))
+                                                         yield NCName((head::tl).mkString))
 
   /** Generates an arbitrary valid colonized name i.e. <NCName>:<NCName> */
   implicit def arbCName : Arbitrary[CName] = Arbitrary(resultOf(CName))
@@ -99,7 +101,6 @@ object ArbitraryInstances {
   
   implicit def arbLiteralPattern : Arbitrary[LiteralPattern] = Arbitrary(resultOf(LiteralPattern))
   implicit def arbParent : Arbitrary[Parent] = Arbitrary(resultOf(Parent))
-  implicit def arbPrimitivePattern : Arbitrary[PrimitivePattern] = Arbitrary(oneOf("text", "empty", "notAllowed") flatMap(PrimitivePattern.apply))
   implicit def arbDatatype : Arbitrary[Datatype] = Arbitrary(for(name <- arbitrary[DatatypeName];
                                                                  paramCount <- choose(0, 10);
                                                                  params <- listOfN(paramCount, arbitrary[(NCName, Literal)]))
@@ -107,7 +108,6 @@ object ArbitraryInstances {
 
   def leafPattern : Gen[Pattern] = oneOf(arbitrary[LiteralPattern],
                                          arbitrary[Parent],
-                                         arbitrary[PrimitivePattern],
                                          arbitrary[Datatype])
                             // TODO: external refs 
 
@@ -152,10 +152,22 @@ object ArbitraryInstances {
   /*
    * Grammar Content
    */
-  implicit def arbGrammar : Arbitrary[Seq[GrammarContent]] = Arbitrary(listOf(arbitrary[GrammarContent]))
-  implicit def arbGrammarContent : Arbitrary[GrammarContent] = Arbitrary(oneOf(wrap(resultOf(Define)),
-                                                                               wrap(resultOf(Include)),
-                                                                               wrap(resultOf(Div))))
+  implicit def arbGrammar : Arbitrary[Seq[GrammarContent]] = Arbitrary(for (n <- choose(0, 20); g <- listOfN(n, arbitrary[GrammarContent])) yield g)
+  implicit def leafGrammarContent(pattern: Gen[Pattern]) : Gen[GrammarContent] = for(name <- arbitrary[NCName]; op <- arbitrary[AssignOp]; p <- pattern) yield Define(name, op, p)
+
+  implicit def recursiveGrammarContent(pattern: Gen[Pattern], subGrammar:Gen[Seq[GrammarContent]]) : Gen[GrammarContent] = oneOf(leafGrammarContent(pattern),
+                                                                                                                                 for (g <- subGrammar) yield Div(g),
+                                                                                                                                 for (l <- arbitrary[Literal];
+                                                                                                                                      n <- arbitrary[Option[NCName]];
+                                                                                                                                      g <- subGrammar) yield Include(l, n, g))
+  
+  
+  /** Generates grammar content of depth at most d */
+  def grammarContentOfDepth(d: Int) : Gen[GrammarContent] = if (d <= 0) leafGrammarContent(patternOfDepth(0))
+                                                            else recursiveGrammarContent(patternOfDepth(d-1), listOfN(d-1, grammarContentOfDepth(d-1)))
+
+  /** Generates grammars of depth at most d */
+  implicit def arbGrammarContent : Arbitrary[GrammarContent] = Arbitrary(choose(0, 10) flatMap grammarContentOfDepth)
 
   /*
    * Schema

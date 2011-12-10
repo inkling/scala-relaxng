@@ -45,7 +45,7 @@ import org.scalacheck.Arbitrary._
 class PrettySpec extends Spec with Checkers {
 
   /** Little wrapper because I never "it" without a "check" */
-  def checkit(description: String)(prop: Prop) { it(description) { check(prop) } }
+  def checkit(description: String)(prop: =>Prop) { it(description) { check(prop) } }
 
   /** Compresses multiple space characters to one and trim leading/trailing and those near parens
    * TODO: don't be so lenient on the pretty-printer */

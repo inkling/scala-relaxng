@@ -111,7 +111,7 @@ object Pretty {
   }
 
   def prefix(op: UnOp) : Boolean = op.raw match { case "list" | "mixed"  => true; case _ => false }
-  def postfix(op: UnOp) : Boolean = op.raw match { case "*" | "+"  => true; case _ => false }
+  def postfix(op: UnOp) : Boolean = op.raw match { case "*" | "+" | "?" => true; case _ => false }
   
   implicit def prettyDatatypeName : Pretty[DatatypeName] = simple {
     dt: DatatypeName => dt match {
@@ -145,18 +145,15 @@ object Pretty {
     }}
   }
   
-  implicit def prettyPrimitivePattern : Pretty[PrimitivePattern] = simple { p => text(p.raw) }
-
   implicit def prettyPattern : Pretty[Pattern] = Pretty { 
     inner => {
       /* atoms; no needs for inner parens */
-      case p:PrimitivePattern => pretty(p)
       case NCNamePattern(name) => pretty(name)
       case l:LiteralPattern => pretty(l)
       case d:Datatype => pretty(d, inner)
+      case Element(nameClass, pattern) =>  text("element") :/: pretty(nameClass) :/: block(pretty(pattern))
+      case Attribute(nameClass, pattern) => text("attribute") :/: pretty(nameClass) :/: block(pretty(pattern))
       case p => innerParens(inner) { p match {
-        case Element(nameClass, pattern) =>  text("element") :/: pretty(nameClass) :/: block(pretty(pattern))
-        case Attribute(nameClass, pattern) => text("attribute") :/: pretty(nameClass) :/: block(pretty(pattern))
         case ApplyBinOp(BinOp(","), left, right) => innerPretty(left) :: text(",") :/: innerPretty(right)
         case ApplyBinOp(op, left, right) => group(innerPretty(left) :/: pretty(op) :/: innerPretty(right))
         case a:ApplyUnOp => pretty(a)
@@ -187,16 +184,16 @@ object Pretty {
 
   implicit def prettyGrammarContent : Pretty[GrammarContent] = simple {
     case Define(name, op, pattern) => pretty(name) :/: pretty(op) :/: pretty(pattern)
-    case Div(grammar) => text("div") :/: (if (grammar.size > 0) pretty(grammar) else text("{ }")) 
+    case Div(grammar) => text("div") :/: (if (grammar.size > 0) pretty(grammar) else text("{ }"))
     case Include(uri, inherit, include) => (text("include") :/: pretty(uri) :/: 
                                             (inherit match { case None => empty; case Some(nc) => text("inherit =") :: pretty(nc) }) :/:
                                             pretty(include))
   }
 
   implicit def prettySchema : Pretty[Schema] = simple {
-    s => (if (s.decl.size <= 0) empty else s.decl.map(pretty[Declaration]).reduce(_ :: text("\n") :/: _)) :/: (s.content match {
+    s => (if (s.decl.size <= 0) empty else s.decl.map(pretty[Declaration]).reduce(_ :: text("\n") :/: _) :: text("\n")) :/: (s.content match {
       case Left(pattern) => pretty(pattern)
-      case Right(grammar) => grammar.map(pretty[GrammarContent]).reduce(_ :: text("\n") :/: _)
+      case Right(grammar) => if (grammar.size <= 0) empty else grammar.map(pretty[GrammarContent]).reduce(_ :: text("\n") :/: _)
     })
   }
 }

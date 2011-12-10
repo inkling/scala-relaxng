@@ -82,7 +82,6 @@ class ParsePrettySpec extends Spec with Checkers {
     }
 
     describe("patterns") {
-      checkit("primitive patterns")  { parsePretty(primitivePattern) }
       checkit("literal patterns")    { parsePretty(literalPattern) }
       checkit("datatype parameters") { parsePretty(datatypeParams) }
       checkit("datatype patterns")   { parsePretty(datatypePattern) }
@@ -90,7 +89,11 @@ class ParsePrettySpec extends Spec with Checkers {
       for(i <- Range(0, 5)) {
         checkit("depth-%s patterns".format(i)) { parsePretty(patternOfDepth(i))(pattern) }
       }
-      // checkit("patterns") { parsePretty(pattern) }
+      checkit("arbitrary patterns") { parsePretty(pattern) }
+    }
+    
+    describe("grammar content") {
+      // too big checkit("arbitrary grammar content") { parsePretty(grammarContent) }
     }
   }
 }

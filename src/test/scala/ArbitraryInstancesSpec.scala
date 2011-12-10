@@ -32,7 +32,7 @@ import org.scalacheck.Prop._
 import org.scalacheck.Arbitrary._
 
 class ArbitraryInstancesSpec extends Spec with Checkers {
-  def checkit(description: String)(prop: Prop) {
+  def checkit(description: String)(prop: =>Prop) {
     it(description) {
       check(prop)
     }

@@ -46,22 +46,32 @@ object Parsers extends RegexParsers with PackratParsers {
   def braces[T](p: PackratParser[T]) : PackratParser[T] = "{" ~> p <~ "}"
   def parens[T](p: PackratParser[T]) : PackratParser[T] = "(" ~> p <~ ")"
 
-  lazy val postfixUnOp : PackratParser[UnOp] = ("*" | "+") ^^ UnOp.apply
+  lazy val postfixUnOp : PackratParser[UnOp] = ("*" | "+" | "?") ^^ UnOp.apply
   lazy val prefixUnOp : PackratParser[UnOp] = ("list" | "mixed") ^^ UnOp.apply
   lazy val binOp : PackratParser[BinOp] = ("&" | "|" | ",") ^^ BinOp.apply
   lazy val assignOp : PackratParser[AssignOp] = ("=" | "&=" | "|=") ^^ AssignOp.apply
 
   lazy val colonPrefix : PackratParser[NCName] = ncName <~ ":"
   
-  lazy val ncName : PackratParser[NCName] = "[a-zA-Z][a-zA-Z0-9]*".r ^^ NCName.apply // TODO: parse the spec
+  lazy val ncName : PackratParser[NCName] = "[a-zA-Z_][-a-zA-Z0-9._]*".r ^^ NCName.apply // TODO: parse the spec
 
   lazy val cName : PackratParser[CName] = colonPrefix ~ ncName ^^ { case prefix ~ suffix => CName(prefix, suffix) }
 
   lazy val identifier : PackratParser[NCName] = ((not(keyword) ~> ncName) | ("\\" ~> ncName))
 
-  lazy val keyword : PackratParser[NCName] = ("attribute" | "default" | "datatypes" | "div" | "element" | "empty" | "external"
-                                              | "grammar" | "include" | "inherit" | "list" | "mixed" | "namespace" | "notAllowed"
-                                              | "parent" | "start" | "string" | "text" | "token") ^^ NCName.apply
+  lazy val identifierOrStart: PackratParser[NCName] = identifier | ("start" ^^ NCName.apply)
+  
+  lazy val identifierOrPrimitive: PackratParser[NCName] = (("text" | "empty" | "notAllowed")^^ NCName.apply) | identifier
+
+  // TODO: do I need this?
+  val keywords = Seq("attribute", "default", "datatypes", "div", "element", "empty" , "external"
+                     , "grammar", "include", "inherit", "list", "mixed", "namespace", "notAllowed"
+                     , "parent", "start", "string", "text", "token")
+
+  lazy val keyword : PackratParser[NCName] = 
+    ("attribute" | "default" | "datatypes" | "div" | "element" | "empty" | "external"
+     | "grammar" | "include" | "inherit" | "list" | "mixed" | "namespace" | "notAllowed"
+     | "parent" | "start" | "string" | "text" | "token") ^^ NCName.apply
 
   lazy val datatypeName : PackratParser[DatatypeName] = (
       ("string" | "token") ^^ PrimitiveDatatype.apply
@@ -89,25 +99,27 @@ object Parsers extends RegexParsers with PackratParsers {
                                                                                                              case Some(l) => l.toMap }
 
   lazy val literalPattern : PackratParser[LiteralPattern] = (datatypeName?) ~ literal ^^ { case name ~ value => LiteralPattern(name, value) }
-  lazy val primitivePattern : PackratParser[PrimitivePattern] = ("text" | "empty" | "notAllowed") ^^ PrimitivePattern.apply
   lazy val datatypePattern : PackratParser[Datatype] = datatypeName ~ datatypeParams ^^ { case name ~ params => Datatype(name, params) }
   lazy val parent : PackratParser[Parent] = "parent" ~> identifier ^^ Parent.apply
   lazy val applyUnOp : PackratParser[ApplyUnOp] = (
       prefixUnOp ~ ("{" ~> pattern <~ "}") ^^ { case op ~ p => ApplyUnOp(op, p) }
     | pattern ~ postfixUnOp ^^ { case p ~ op => ApplyUnOp(op, p) }
   )
+  
+  lazy val applyBinOp : PackratParser[ApplyBinOp] = pattern ~ binOp ~ pattern ^^ { case p1 ~ op ~ p2 => ApplyBinOp(op, p1, p2) }
+
+  lazy val element : PackratParser[Element] = ("element" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Element(nc, p) }
 
   lazy val pattern : PackratParser[Pattern] = (
-      ("element" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Element(nc, p) }
-    | ("attribute" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Attribute(nc, p) }
-    | pattern ~ binOp ~ pattern ^^ { case p1 ~ op ~ p2 => ApplyBinOp(op, p1, p2) }
-    | applyUnOp
-    | literalPattern
-    | datatypePattern
-    | parent
-    | identifier ^^ NCNamePattern.apply
-    | "(" ~> pattern <~ ")"
-    | primitivePattern
+      applyUnOp
+    ||| applyBinOp 
+    ||| element
+    ||| ("attribute" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Attribute(nc, p) }
+    ||| "(" ~> pattern <~ ")"
+    ||| literalPattern
+    ||| datatypePattern
+    ||| parent
+    ||| identifierOrPrimitive ^^ NCNamePattern.apply
     // TODO: external URI refs and grammar content
   )
 
@@ -125,14 +137,17 @@ object Parsers extends RegexParsers with PackratParsers {
   lazy val inherit: PackratParser[NCName] = "inherit"  ~> "=" ~> identifier
 
   lazy val grammarContent: PackratParser[GrammarContent] = (
-      identifier ~ (assignOp ~ pattern) ^^ { case ~(name, ~(assign, pattern)) => Define(name, assign, pattern) }
-    | "start" ~> (assignOp ~ pattern) ^^ { case ~(assign, pattern) => Define(NCName("start"), assign, pattern) }
+      identifierOrStart ~ (assignOp ~ pattern) ^^ { case ~(name, ~(assign, pattern)) => Define(name, assign, pattern) }
     | "div" ~> braces(grammarContent*) ^^ Div.apply
     | ("include" ~> literal) ~ ( (inherit?) ~ (braces(grammarContent*)?) ) ^^ { case ~(uri, ~(maybeInherit, None))    => Include(uri, maybeInherit, Seq())
                                                                                 case ~(uri, ~(maybeInherit, Some(l))) => Include(uri, maybeInherit, l) }
   )
 
-  lazy val schema: PackratParser[Schema] = (declaration*) ~ (memo(pattern ^^ Left.apply)
-                                                             | (grammarContent*) ^^ Right.apply) ^^ { case ~(decls, content) => Schema(decls, content) }
+  lazy val schemaBody : PackratParser[Either[Pattern, Seq[GrammarContent]]] = (
+        (grammarContent*) ^^ Right.apply
+    ||| pattern ^^ Left.apply
+  )
+
+  lazy val schema: PackratParser[Schema] = (declaration*) ~ schemaBody ^^ { case ~(decls, body) => Schema(decls, body) }
   
 }

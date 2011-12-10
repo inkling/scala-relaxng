@@ -46,11 +46,8 @@ import org.scalacheck.Arbitrary._
  * and regressions are passing. See [[com.inkling.relaxng.test.ParsePretty]]
  * for a more thorough spec.
  */
-class ParsersSpec extends Spec with Checkers {
+class ParsersSpec extends CheckSpec {
 
-  /** Little wrapper because I never "it" without a "check" */
-  def checkit(description: String)(prop: Prop) { it(description) { check(prop) } }
-  
   /** Test a list of samples */
   def checkSamples[T](parser: Parser[T], samples: Seq[(String, T)])(implicit p: Pretty[T]) {
     samples.foreach { case (string, ast) => checkit(string) { parseAll(parser, string).get ?= ast } }
@@ -65,6 +62,14 @@ class ParsersSpec extends Spec with Checkers {
 
     describe("parses sample datatype params correctly") {
       checkSamples(datatypeParams, Samples.Canonical.params)
+    }
+    
+    describe("parses sample identifiers correctly") {
+      checkSamples(Parsers.identifier, Samples.Canonical.identifiers)
+    }
+    
+    describe("parses sample unary operator applications correctly") {
+      checkSamples(pattern, Samples.Canonical.applyUnOps)
     }
 
     describe("parses sample patterns correctly") {

@@ -43,32 +43,52 @@ object Samples {
                                                "* - *"               -> ExceptNameClass(WildcardNameClass(), WildcardNameClass()),
                                                "foo:* - (x | y)"     -> ExceptNameClass(WildcardNameClass(Some(NCName("foo"))), OrNameClass(NCName("x"),
                                                                                                                                             NCName("y"))))
+
+    val identifiers = Seq[(String, NCName)]("foo" -> NCName("foo"),
+                                            "x.y" -> NCName("x.y"))
     
     val params = Seq[(String, Map[NCName, Literal])]("{ foo = \"bar\" }" -> Map(NCName("foo") -> Literal("bar")),
                                                      "{ foo = \"bar\" foo2 = \"bar2\"}" -> Map(NCName("foo") -> Literal("bar"),
                                                                                                NCName("foo2") -> Literal("bar2")),
                                                      "{ foo= \"bar\" }" -> Map(NCName("foo") -> Literal("bar")))
+                                          
+    val applyUnOps = Seq[(String, ApplyUnOp)]("element t:* { parent uM } ?"     -> ApplyUnOp(UnOp("?"), Element(WildcardNameClass(Some(NCName("t"))),Parent(NCName("uM")))))
 
-    val patterns = Seq[(String, Pattern)]("empty"                          -> PrimitivePattern("empty"),
-                                          "bizzle"                         -> NCNamePattern(NCName("bizzle")),
-                                          "element foo { empty }"          -> Element(NCName("foo"), PrimitivePattern("empty")),
-                                          "attribute foo { empty }"        -> Attribute(NCName("foo"), PrimitivePattern("empty")),
-                                          "attribute foo { notAllowed }"   -> Attribute(NCName("foo"), PrimitivePattern("notAllowed")),
-                                          "string +"                       -> ApplyUnOp(UnOp("+"), PrimitiveDatatype("string")),
-                                          "string *"                       -> ApplyUnOp(UnOp("*"), PrimitiveDatatype("string")),
-                                          "xsd:bif { x = \"y\"}"           -> Datatype(CName(NCName("xsd"), NCName("bif")), Map(NCName("x") -> Literal("y"))),
-                                          "s9:baf { z = \"w\" a = \"bc\"}" -> Datatype(CName(NCName("s9"), NCName("baf")), Map(NCName("z") -> Literal("w"),
-                                                                                                                               NCName("a") -> Literal("bc"))),
-                                          "list { token }"                 -> ApplyUnOp(UnOp("list"), PrimitiveDatatype("token")),
-                                          "mixed { element foo { text } }" -> ApplyUnOp(UnOp("mixed"), Element(NCName("foo"), PrimitivePattern("text"))),
-                                          "string , string"                -> ApplyBinOp(BinOp(","), PrimitiveDatatype("string"), PrimitiveDatatype("string")),
-                                          "string & string"                -> ApplyBinOp(BinOp("&"), PrimitiveDatatype("string"), PrimitiveDatatype("string")),
-                                          "string & (string | empty)"      -> ApplyBinOp(BinOp("&"), PrimitiveDatatype("string"), ApplyBinOp(BinOp("|"), 
-                                                                                                                                             PrimitiveDatatype("string"),
-                                                                                                                                             PrimitivePattern("empty"))),
-                                          "string | empty"                 -> ApplyBinOp(BinOp("|"), PrimitiveDatatype("string"), PrimitivePattern("empty")),
-                                          "element t:* { parent uM }"      -> Element(WildcardNameClass(Some(NCName("t"))),Parent(NCName("uM"))),
-                                          "(element t:* { parent uM })+"   -> ApplyUnOp(UnOp("+"),Element(WildcardNameClass(Some(NCName("t"))),Parent(NCName("uM")))) )
+    val patterns = Seq[(String, Pattern)](
+      "empty"                          -> NCNamePattern(NCName("empty")),
+      "bizzle"                         -> NCNamePattern(NCName("bizzle")),
+      "foo.baz"                        -> NCNamePattern(NCName("foo.baz")),
+      // TODO: "text.ident"                     -> NCNamePattern(NCName("text.ident")),
+      "element foo { empty }"          -> Element(NCName("foo"), NCNamePattern(NCName("empty"))),
+      "attribute foo { empty }"        -> Attribute(NCName("foo"), NCNamePattern(NCName("empty"))),
+      "attribute foo { notAllowed }"   -> Attribute(NCName("foo"), NCNamePattern(NCName("notAllowed"))),
+      "string +"                       -> ApplyUnOp(UnOp("+"), PrimitiveDatatype("string")),
+      "string *"                       -> ApplyUnOp(UnOp("*"), PrimitiveDatatype("string")),
+      "xsd:bif { x = \"y\"}"           -> Datatype(CName(NCName("xsd"), NCName("bif")), Map(NCName("x") -> Literal("y"))),
+      "s9:baf { z = \"w\" a = \"bc\"}" -> Datatype(CName(NCName("s9"), NCName("baf")), Map(NCName("z") -> Literal("w"),
+                                                                                           NCName("a") -> Literal("bc"))),
+      "list { token }"                 -> ApplyUnOp(UnOp("list"), PrimitiveDatatype("token")),
+      "mixed { element foo { text } }" -> ApplyUnOp(UnOp("mixed"), Element(NCName("foo"), NCNamePattern(NCName("text")))),
+      "string , string"                -> ApplyBinOp(BinOp(","), PrimitiveDatatype("string"), PrimitiveDatatype("string")),
+      "string & string"                -> ApplyBinOp(BinOp("&"), PrimitiveDatatype("string"), PrimitiveDatatype("string")),
+      "string & (string | empty)"      -> ApplyBinOp(BinOp("&"), PrimitiveDatatype("string"), ApplyBinOp(BinOp("|"), 
+                                                                                                         PrimitiveDatatype("string"),
+                                                                                                         NCNamePattern(NCName("empty")))),
+      "string | empty"                 -> ApplyBinOp(BinOp("|"), PrimitiveDatatype("string"), NCNamePattern(NCName("empty"))),
+      "element t:* { parent uM }"      -> Element(WildcardNameClass(Some(NCName("t"))),Parent(NCName("uM"))),
+      "element t:* { parent uM }?"     -> ApplyUnOp(UnOp("?"), Element(WildcardNameClass(Some(NCName("t"))),Parent(NCName("uM")))),
+      "element t:* { parent uM }+"   -> ApplyUnOp(UnOp("+"),Element(WildcardNameClass(Some(NCName("t"))),Parent(NCName("uM")))),
+
+      "element foo { empty } | element baz { empty }" -> ApplyBinOp(BinOp("|"),
+                                                                    Element(NCName("foo"), NCNamePattern(NCName("empty"))),
+                                                                    Element(NCName("baz"), NCNamePattern(NCName("empty")))),
+      "element foo { empty } , element baz { empty }" -> ApplyBinOp(BinOp(","),
+                                                                    Element(NCName("foo"), NCNamePattern(NCName("empty"))),
+                                                                    Element(NCName("baz"), NCNamePattern(NCName("empty")))),
+      "element foo { empty } , attribute baz { x.y }" -> ApplyBinOp(BinOp(","),
+                                                                    Element(NCName("foo"), NCNamePattern(NCName("empty"))),
+                                                                    Attribute(NCName("baz"), NCNamePattern(NCName("x.y"))))
+    )
 
     val declarations = Seq[(String, Declaration)](
       "namespace foo = inherit"                            -> Namespace(NCName("foo"), Right(Inherit())),
@@ -82,10 +102,13 @@ object Samples {
                                                         "div { }"   -> Div(Seq()))
 
     val schemas = Seq[(String, Schema)](
-      "empty"                            -> Schema(Seq(), Left(PrimitivePattern("empty"))),
-      "element foo { empty }"            -> Schema(Seq(), Left(Element(NCName("foo"), PrimitivePattern("empty")))),
-      "start = empty"                    -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), PrimitivePattern("empty"))))),
-      "start = empty\n start |= string"  -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), PrimitivePattern("empty")),
+      "empty"                            -> Schema(Seq(), Left(NCNamePattern(NCName("empty")))),
+      "element foo { empty }"            -> Schema(Seq(), Left(Element(NCName("foo"), NCNamePattern(NCName("empty"))))),
+      "start = empty"                    -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), NCNamePattern(NCName("empty")))))),
+      "foo |= empty"                    -> Schema(Seq(), Right(Seq(Define(NCName("foo"), AssignOp("|="), NCNamePattern(NCName("empty")))))),
+      "start = element foo { empty }"    -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), Element(NCName("foo"), NCNamePattern(NCName("empty"))))))),
+      "fizzle = element foo { empty }"    -> Schema(Seq(), Right(Seq(Define(NCName("fizzle"), AssignOp("="), Element(NCName("foo"), NCNamePattern(NCName("empty"))))))),
+      "start = empty\n start |= string"  -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), NCNamePattern(NCName("empty"))),
                                                                     Define(NCName("start"), AssignOp("|="), Datatype(PrimitiveDatatype("string")))))),
       "namespace foo = inherit\n start &= string" -> Schema(Seq(Namespace(NCName("foo"), Right(Inherit()))),
                                                             Right(Seq(Define(NCName("start"), AssignOp("&="), PrimitiveDatatype("string")))))
@@ -100,10 +123,10 @@ object Samples {
   object NonCanonical {
     val nameClasses = Seq[(String, NameClass)]("(foo)"               -> NCName("foo"))
     
-    val patterns = Seq("element foo {empty\n}"          -> Element(NCName("foo"), PrimitivePattern("empty")),
-                       "(empty)"                        -> PrimitivePattern("empty"),
-                       "attribute foo {empty}"          -> Attribute(NCName("foo"), PrimitivePattern("empty")),
-                       "attribute foo {notAllowed}"     -> Attribute(NCName("foo"), PrimitivePattern("notAllowed")),
+    val patterns = Seq("element foo {empty\n}"          -> Element(NCName("foo"), NCNamePattern(NCName("empty"))),
+                       "(empty)"                        -> NCNamePattern(NCName("empty")),
+                       "attribute foo {empty}"          -> Attribute(NCName("foo"), NCNamePattern(NCName("empty"))),
+                       "attribute foo {notAllowed}"     -> Attribute(NCName("foo"), NCNamePattern(NCName("notAllowed"))),
                        "string+"                        -> ApplyUnOp(UnOp("+"), PrimitiveDatatype("string")),
                        "string*"                        -> ApplyUnOp(UnOp("*"), PrimitiveDatatype("string")))
     
@@ -112,7 +135,7 @@ object Samples {
     val grammarContent = Seq("foo = baz"                          -> Define(NCName("foo"), AssignOp("="), NCNamePattern(NCName("baz"))),
                              "div { }"                            -> Div(Seq()))
 
-    val schemas = Seq("start = empty\n\n\nstart |= string"  -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), PrimitivePattern("empty")),
+    val schemas = Seq("start = empty\n\n\nstart |= string"  -> Schema(Seq(), Right(Seq(Define(NCName("start"), AssignOp("="), NCNamePattern(NCName("empty"))),
                                                                                        Define(NCName("start"), AssignOp("|="), Datatype(PrimitiveDatatype("string")))))),
                       "namespace foo = inherit \n \n start &= string" -> Schema(Seq(Namespace(NCName("foo"), Right(Inherit()))),
                                                                                 Right(Seq(Define(NCName("start"), AssignOp("&="), PrimitiveDatatype("string"))))))
