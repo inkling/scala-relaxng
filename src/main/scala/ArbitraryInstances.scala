@@ -49,9 +49,10 @@ object ArbitraryInstances {
   implicit def arbAssignOp : Arbitrary[AssignOp] = Arbitrary(for(raw <- oneOf("=", "|=", "&=")) yield AssignOp(raw))
 
   /** Generates an arbitrary valid colon-free name (TODO; currently just [[org.scalacheck.Gen.identifier]]) */
-  implicit def arbNCName : Arbitrary[NCName] = Arbitrary(for(head <- oneOf(alphaChar, '_');
-                                                             tl <- listOf(oneOf(alphaChar, numChar, '-', '_', '.')))
-                                                         yield NCName((head::tl).mkString))
+  implicit def arbNCName : Arbitrary[NCName] = Arbitrary(
+    oneOf(for(prefix <- oneOf("text", "empty", "notAllowed"); suffix <- alphaStr) yield NCName(prefix + "." + suffix),
+          for(head <- oneOf(alphaChar, '_'); tl <- listOf(oneOf(alphaChar, numChar, '-', '_', '.'))) yield NCName((head::tl).mkString) )
+  )
 
   /** Generates an arbitrary valid colonized name i.e. <NCName>:<NCName> */
   implicit def arbCName : Arbitrary[CName] = Arbitrary(resultOf(CName))

@@ -72,7 +72,10 @@ object Parsers extends RegexParsers with PackratParsers {
 
   lazy val identifierOrStart: PackratParser[NCName] = identifier | ("start" ^^ NCName.apply)
   
-  lazy val identifierOrPrimitive: PackratParser[Pattern] = ((("text" | "empty" | "notAllowed") ^^ NCName.apply) | identifier) ^^ NCNamePattern.apply
+  lazy val identifierOrPrimitive: PackratParser[Pattern] = (
+      identifier 
+    | ("text" | "empty" | "notAllowed") ^^ NCName.apply
+  ) ^^ NCNamePattern.apply
 
   lazy val keyword : PackratParser[NCName] = 
     ("attribute" | "default" | "datatypes" | "div" | "element" | "empty" | "external"
