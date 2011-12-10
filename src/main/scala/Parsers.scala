@@ -23,6 +23,7 @@ package com.inkling.relaxng
 
 import AST._
 
+import scala.io.Source
 import java.io.{File, FileReader, BufferedReader}  
 import java.net.URI
 import scala.util.parsing.combinator._
@@ -38,8 +39,10 @@ object Parsers extends RegexParsers with PackratParsers {
 
   /** Load a schema from a file */
   def load(fileName: File) : ParseResult[Schema] = {
-    /* holy wtf */
-    val input = new PagedSeqReader( PagedSeq.fromReader(new BufferedReader( new FileReader(fileName))))
+    val input = new PagedSeqReader( PagedSeq.fromLines(for (line <- Source.fromFile(fileName).getLines;
+                                                            if (!line.startsWith("#")))
+                                                       yield line) )
+
     parse(phrase(schema), new PackratReader(input))
   }
 
