@@ -44,8 +44,9 @@ object Samples {
                                                "foo:* - (x | y)"     -> ExceptNameClass(WildcardNameClass(Some(NCName("foo"))), OrNameClass(NCName("x"),
                                                                                                                                             NCName("y"))))
 
-    val identifiers = Seq[(String, NCName)]("foo" -> NCName("foo"),
-                                            "x.y" -> NCName("x.y"))
+    val identifiers = Seq[(String, NCName)]("foo"          -> NCName("foo"),
+                                            "x.y"          -> NCName("x.y"),
+                                            "text.special" -> NCName("text.special"))
     
     val params = Seq[(String, Map[NCName, Literal])]("{ foo = \"bar\" }" -> Map(NCName("foo") -> Literal("bar")),
                                                      "{ foo = \"bar\" foo2 = \"bar2\"}" -> Map(NCName("foo") -> Literal("bar"),
@@ -58,7 +59,7 @@ object Samples {
       "empty"                          -> NCNamePattern(NCName("empty")),
       "bizzle"                         -> NCNamePattern(NCName("bizzle")),
       "foo.baz"                        -> NCNamePattern(NCName("foo.baz")),
-      // TODO: "text.ident"                     -> NCNamePattern(NCName("text.ident")),
+      "text.ident"                     -> NCNamePattern(NCName("text.ident")),
       "element foo { empty }"          -> Element(NCName("foo"), NCNamePattern(NCName("empty"))),
       "attribute foo { empty }"        -> Attribute(NCName("foo"), NCNamePattern(NCName("empty"))),
       "attribute foo { notAllowed }"   -> Attribute(NCName("foo"), NCNamePattern(NCName("notAllowed"))),
@@ -139,5 +140,9 @@ object Samples {
                                                                                        Define(NCName("start"), AssignOp("|="), Datatype(PrimitiveDatatype("string")))))),
                       "namespace foo = inherit \n \n start &= string" -> Schema(Seq(Namespace(NCName("foo"), Right(Inherit()))),
                                                                                 Right(Seq(Define(NCName("start"), AssignOp("&="), PrimitiveDatatype("string"))))))
+  }
+
+  object Rejects {
+    val identifiers = Seq[String]("text")
   }
 }

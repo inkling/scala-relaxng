@@ -57,16 +57,22 @@ object Parsers extends RegexParsers with PackratParsers {
 
   lazy val cName : PackratParser[CName] = colonPrefix ~ ncName ^^ { case prefix ~ suffix => CName(prefix, suffix) }
 
-  lazy val identifier : PackratParser[NCName] = ((not(keyword) ~> ncName) | ("\\" ~> ncName))
+  val keywords = Set("attribute", "default", "datatypes", "div", "element", "empty" , "external"
+                     , "grammar", "include", "inherit", "list", "mixed", "namespace", "notAllowed"
+                     , "parent", "start", "string", "text", "token")
+
+  // TODO: escaped keywords
+  lazy val identifier : PackratParser[NCName] = ncName flatMap { 
+    nc => 
+      if (keywords.contains(nc.raw))
+        failure("keyword used as identifier")
+      else
+        success(nc)
+  }
 
   lazy val identifierOrStart: PackratParser[NCName] = identifier | ("start" ^^ NCName.apply)
   
-  lazy val identifierOrPrimitive: PackratParser[NCName] = (("text" | "empty" | "notAllowed")^^ NCName.apply) | identifier
-
-  // TODO: do I need this?
-  val keywords = Seq("attribute", "default", "datatypes", "div", "element", "empty" , "external"
-                     , "grammar", "include", "inherit", "list", "mixed", "namespace", "notAllowed"
-                     , "parent", "start", "string", "text", "token")
+  lazy val identifierOrPrimitive: PackratParser[Pattern] = ((("text" | "empty" | "notAllowed") ^^ NCName.apply) | identifier) ^^ NCNamePattern.apply
 
   lazy val keyword : PackratParser[NCName] = 
     ("attribute" | "default" | "datatypes" | "div" | "element" | "empty" | "external"
@@ -74,8 +80,8 @@ object Parsers extends RegexParsers with PackratParsers {
      | "parent" | "start" | "string" | "text" | "token") ^^ NCName.apply
 
   lazy val datatypeName : PackratParser[DatatypeName] = (
-      ("string" | "token") ^^ PrimitiveDatatype.apply
-    | cName ^^ DatatypeCName.apply
+        ("string" | "token") ^^ PrimitiveDatatype.apply
+    ||| cName ^^ DatatypeCName.apply
   )
 
   lazy val literal : PackratParser[Literal] = "\"" ~> regex("[^\"]*".r) <~ "\"" ^^ Literal.apply // TODO: improve this; currently just strings w/out escapes
@@ -92,7 +98,6 @@ object Parsers extends RegexParsers with PackratParsers {
     | identifier
   )
 
-  
   lazy val datatypeParam : PackratParser[(NCName, Literal)] = identifier ~ ("=" ~> literal) ^^ { case ident ~ value => (ident, value) }
 
   lazy val datatypeParams : PackratParser[Map[NCName, Literal]] = (("{" ~> rep(datatypeParam) <~ "}")?) ^^ { case None    => Map[NCName, Literal]()
@@ -109,17 +114,19 @@ object Parsers extends RegexParsers with PackratParsers {
   lazy val applyBinOp : PackratParser[ApplyBinOp] = pattern ~ binOp ~ pattern ^^ { case p1 ~ op ~ p2 => ApplyBinOp(op, p1, p2) }
 
   lazy val element : PackratParser[Element] = ("element" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Element(nc, p) }
+    
+  lazy val attribute : PackratParser[Attribute] =  ("attribute" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Attribute(nc, p) }
 
   lazy val pattern : PackratParser[Pattern] = (
       applyUnOp
-    ||| applyBinOp 
-    ||| element
-    ||| ("attribute" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Attribute(nc, p) }
-    ||| "(" ~> pattern <~ ")"
-    ||| literalPattern
-    ||| datatypePattern
-    ||| parent
-    ||| identifierOrPrimitive ^^ NCNamePattern.apply
+    | applyBinOp 
+    | element
+    | attribute
+    | literalPattern
+    | datatypePattern
+    | parent
+    | identifierOrPrimitive 
+    | "(" ~> pattern <~ ")"
     // TODO: external URI refs and grammar content
   )
 

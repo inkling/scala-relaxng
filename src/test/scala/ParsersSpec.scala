@@ -53,6 +53,10 @@ class ParsersSpec extends CheckSpec {
     samples.foreach { case (string, ast) => checkit(string) { parseAll(parser, string).get ?= ast } }
   }
 
+  def rejectSamples[T](parser: Parser[T], samples: Seq[String]) {
+    samples.foreach { case (string) => checkit(string) { !parse(parser, string).successful } }
+  }
+
   describe("A RelaxNg (compact) parser") {
 
     describe("parses sample name classes correctly") {
@@ -66,6 +70,10 @@ class ParsersSpec extends CheckSpec {
     
     describe("parses sample identifiers correctly") {
       checkSamples(Parsers.identifier, Samples.Canonical.identifiers)
+    }
+
+    describe("rejects bogus identifiers") {
+      rejectSamples(Parsers.identifier, Samples.Rejects.identifiers)
     }
     
     describe("parses sample unary operator applications correctly") {
