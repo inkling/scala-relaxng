@@ -5,6 +5,7 @@ This library provides classes for working with Compact-syntax RelaxNG grammars
 in a Scala-esque / functional way. It is NOT an XML Validator.
 
 The three components are:
+
  1. A comprehensive abstract syntax for RelaxNG Compact Syntax, with Arbitrary instances
  2. A parser for the abstract syntax
  3. A pretty-printer for the abstract syntax
