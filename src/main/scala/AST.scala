@@ -63,7 +63,7 @@ object AST {
   case class LiteralPattern(dataType: Option[DatatypeName], value: Literal) extends Pattern
   case class Datatype(name: DatatypeName, params: Map[NCName, Literal] = Map()) extends Pattern 
   /* case class ExceptPattern(datatype: Datatype, except: Pattern) // Never seen in the wild, but in the EBNF; TODO */
-  case class ExternalRef(uri: URI, inherit: Boolean) extends Pattern
+  case class ExternalRef(uri: URI, inherit: Option[NCName]) extends Pattern
   case class Grammar(grammar: Seq[GrammarContent]) extends Pattern
 
   implicit def datatypeToPattern(d: DatatypeName) : Datatype = Datatype(d)
