@@ -130,7 +130,8 @@ object Samples {
                        "attribute foo {empty}"          -> Attribute(NCName("foo"), NCNamePattern(NCName("empty"))),
                        "attribute foo {notAllowed}"     -> Attribute(NCName("foo"), NCNamePattern(NCName("notAllowed"))),
                        "string+"                        -> ApplyUnOp(UnOp("+"), PrimitiveDatatype("string")),
-                       "string*"                        -> ApplyUnOp(UnOp("*"), PrimitiveDatatype("string")))
+                       "string*"                        -> ApplyUnOp(UnOp("*"), PrimitiveDatatype("string")),
+                       "external \"foo\""               -> ExternalRef(new URI("foo"), None))
     
     val declarations = Seq()
 

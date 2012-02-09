@@ -123,6 +123,8 @@ object Parsers extends RegexParsers with PackratParsers {
     
   lazy val attribute : PackratParser[Attribute] =  ("attribute" ~> nameClass) ~ ("{" ~> pattern <~ "}") ^^ { case nc ~ p => Attribute(nc, p) }
 
+  lazy val externalPattern : PackratParser[Pattern] = ("external" ~> literal) ~ (inherit?) ^^ { case uri ~ inherit => ExternalRef(new URI(uri.raw), inherit) }
+
   lazy val pattern : PackratParser[Pattern] = (
       applyUnOp
     | applyBinOp 
@@ -132,8 +134,9 @@ object Parsers extends RegexParsers with PackratParsers {
     | datatypePattern
     | parent
     | identifierOrPrimitive 
+    | externalPattern
     | "(" ~> pattern <~ ")"
-    // TODO: external URI refs and grammar content
+    // TODO: grammar content
   )
 
   lazy val namespaceValue : PackratParser[Either[URI, Inherit]] = (
