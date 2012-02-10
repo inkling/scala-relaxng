@@ -4,31 +4,33 @@ RelaxNG Compact Syntax Parser and Pretty-Printer for Scala
 This library provides classes for working with Compact-syntax RelaxNG grammars
 in a Scala-esque / functional way. It is NOT an XML Validator.
 
-The three components are:
+The components are:
 
  1. A comprehensive abstract syntax for RelaxNG Compact Syntax, with Arbitrary instances
  2. A parser for the abstract syntax
  3. A pretty-printer for the abstract syntax
+ 4. A basic simplifier, primarily for resolving local include directives
 
 For now, use via "sbt publish-local" and add this to your build.sbt 
 
-libraryDependencies += "com.inkling" %% "relaxng" % "0.1"
+`libraryDependencies += "com.inkling" %% "relaxng" % "0.1"`
 
 Dependencies:
 -------------
 
-Dependencies are fetched automatically via
+Dependencies are fetched automatically via SBT.
 
- * SBT: The library is built using SBT >= 0.10.0
+ * [SBT](https://github.com/harrah/xsbt): The library is built using SBT >= 0.10.0
    - To buld, run "sbt compile" in the root directory.
    - To test, run "sbt test" in the root directory
- * ScalaCheck: The library provides scalacheck Arbitrary instances, hence requires it even for non-testing use.
- * ScalaTest: For running the test suites, ScalaTest is required
+ * [ScalaCheck](http://code.google.com/p/scalacheck/): The library provides scalacheck Arbitrary instances, hence requires it even for non-testing use.
+ * [ScalaTest](http://www.scalatest.org/): For running the test suites, ScalaTest is required
 
 Contributors
 ------------
 
- * Kenn Knowles (@kennknowles)
+ * [Kenn Knowles](https://github.com/kennknowles) ([@kennknowles](https://twitter.com/KennKnowles))
+ * [Arthur Kopatsy](https://github.com/kopatsy) ([@akopatsy](https://twitter.com/akopatsy))
 
 Licenses of Dependencies
 ------------------------   
@@ -38,7 +40,7 @@ Licenses of Dependencies
 Copyright and License
 ---------------------
 
-Copyright 2011 Inkling Systems, Inc.
+Copyright 2011-2012 Inkling Systems, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
