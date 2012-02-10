@@ -25,6 +25,7 @@ import Parsers._
 import Pretty._
 
 import java.io.File
+import java.net.URI
 
 /**
  * Main object for pretty-printing RelaxNg schema
@@ -33,10 +34,11 @@ import java.io.File
 object Main {
   def main(args: Array[String]) {
     for(filename <- args) {
-      load(new File(filename)) match {
+      val f = new File(filename)
+      load(f) match {
         case Success(schema, _) =>
           //println(schema)
-          println(prettyString(schema))
+          println(prettyString(Flatten.flatten(schema, relativeTo = new URI("file://%s".format(f.getAbsolutePath)))))
 
         case err  => println("Parse failure for %s: %s".format(filename, err))
       }
