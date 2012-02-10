@@ -38,7 +38,7 @@ object Main {
       load(f) match {
         case Success(schema, _) =>
           //println(schema)
-          println(prettyString(Flatten.flatten(schema, relativeTo = new URI("file://%s".format(f.getAbsolutePath)))))
+          println(prettyString(Simplify.simplify(schema, relativeTo = new URI("file://%s".format(f.getAbsolutePath)))))
 
         case err  => println("Parse failure for %s: %s".format(filename, err))
       }
