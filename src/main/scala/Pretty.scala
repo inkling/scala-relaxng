@@ -153,6 +153,9 @@ object Pretty {
       case d:Datatype => pretty(d, inner)
       case Element(nameClass, pattern) =>  text("element") :/: pretty(nameClass) :/: block(pretty(pattern))
       case Attribute(nameClass, pattern) => text("attribute") :/: pretty(nameClass) :/: block(pretty(pattern))
+      case ExternalRef(uri, inherit) => (text("external") 
+                                         :/: text("\"" + uri.toString + "\"") 
+                                         :/: (inherit match { case None => empty; case Some(nc) => text("inherit = ") :: pretty(nc) }))
       case p => innerParens(inner) { p match {
         case ApplyBinOp(BinOp(","), left, right) => innerPretty(left) :: text(",") :/: innerPretty(right)
         case ApplyBinOp(op, left, right) => group(innerPretty(left) :/: pretty(op) :/: innerPretty(right))

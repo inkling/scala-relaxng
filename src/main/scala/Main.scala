@@ -38,7 +38,7 @@ object Main {
           //println(schema)
           println(prettyString(schema))
 
-        case _  => println("Parse failure for " + filename)
+        case err  => println("Parse failure for %s: %s".format(filename, err))
       }
     }
   }

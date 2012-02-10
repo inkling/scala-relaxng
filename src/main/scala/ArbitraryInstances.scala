@@ -102,6 +102,7 @@ object ArbitraryInstances {
   
   implicit def arbLiteralPattern : Arbitrary[LiteralPattern] = Arbitrary(resultOf(LiteralPattern))
   implicit def arbParent : Arbitrary[Parent] = Arbitrary(resultOf(Parent))
+  implicit def arbExternalRef : Arbitrary[ExternalRef] = Arbitrary(resultOf(ExternalRef))
   implicit def arbDatatype : Arbitrary[Datatype] = Arbitrary(for(name <- arbitrary[DatatypeName];
                                                                  paramCount <- choose(0, 10);
                                                                  params <- listOfN(paramCount, arbitrary[(NCName, Literal)]))
@@ -109,7 +110,8 @@ object ArbitraryInstances {
 
   def leafPattern : Gen[Pattern] = oneOf(arbitrary[LiteralPattern],
                                          arbitrary[Parent],
-                                         arbitrary[Datatype])
+                                         arbitrary[Datatype],
+                                         arbitrary[ExternalRef])
                             // TODO: external refs 
 
   /** Generates an element pattern using [[sub]] for the subpattern */
