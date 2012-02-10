@@ -39,9 +39,8 @@ object Parsers extends RegexParsers with PackratParsers {
 
   /** Load a schema from a file */
   def load(fileName: File) : ParseResult[Schema] = {
-    val input = new PagedSeqReader( PagedSeq.fromLines(for (line <- Source.fromFile(fileName).getLines;
-                                                            if (!line.startsWith("#")))
-                                                       yield line) )
+    val input = new PagedSeqReader( PagedSeq.fromLines(for (line <- Source.fromFile(fileName).getLines)
+                                                            yield line.split("#")(0)))
 
     parse(phrase(schema), new PackratReader(input))
   }
